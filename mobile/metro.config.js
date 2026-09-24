@@ -22,4 +22,28 @@ const shellBuildKind = process.env.EXPO_PUBLIC_MOBILE_SHELL === 'ota' ? 'ota' : 
 // silently bakes the wrong shell into a release.
 config.cacheVersion = `${config.cacheVersion}-shell-${shellBuildKind}`
 
+/**
+ * Orca Review: the feedback demo route (app/feedback-demo.tsx) shows the screenshot → markup →
+ * send flow on a bundled sample frame, for simulator screenshots with no paired desktop. Only a
+ * bundle built with ORCA_REVIEW_FEEDBACK_DEMO=1 gets the real screen; every other bundle — every
+ * TestFlight and release build — resolves it to a redirect, so the demo screen, its stand-in
+ * desktop and the ~150 KB sample frame are not in the bundle at all.
+ */
+const feedbackDemoEnabled = process.env.ORCA_REVIEW_FEEDBACK_DEMO === '1'
+const FEEDBACK_DEMO_ENTRY = /(^|\/)feedback\/demo\/feedback-demo-entry$/
+// No cacheVersion change: this is a resolution, not a transform, and Metro does not persist
+// resolutions, so a warm transform cache cannot carry the other build's choice.
+const upstreamResolveRequest = config.resolver.resolveRequest
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (!feedbackDemoEnabled && FEEDBACK_DEMO_ENTRY.test(moduleName)) {
+    return {
+      type: 'sourceFile',
+      filePath: path.join(projectRoot, 'src', 'feedback', 'demo', 'feedback-demo-disabled.tsx')
+    }
+  }
+  return upstreamResolveRequest
+    ? upstreamResolveRequest(context, moduleName, platform)
+    : context.resolveRequest(context, moduleName, platform)
+}
+
 module.exports = config

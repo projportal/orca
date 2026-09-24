@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Image, PanResponder, StyleSheet, View, type GestureResponderEvent } from 'react-native'
 import Svg from 'react-native-svg'
 import { TextInputModal } from '../components/TextInputModal'
@@ -41,13 +41,22 @@ type Props = {
   onError: (message: string) => void
   /** Seeds the drawing (the demo route shows a drawn arrow and box without touch input). */
   initialState?: MarkupState
+  /** Demo route only: presses Done after this long, running the real flatten. */
+  autoFinishMs?: number
 }
 
 /**
  * The drawing surface over the frozen screenshot. It covers the browser viewport, so it takes
  * every touch there; the pane's own responder is also gated off while it is up.
  */
-export function MobileMarkupOverlay({ capture, onCancel, onDone, onError, initialState }: Props) {
+export function MobileMarkupOverlay({
+  capture,
+  onCancel,
+  onDone,
+  onError,
+  initialState,
+  autoFinishMs
+}: Props) {
   const [state, dispatch] = useReducer(markupReducer, initialState ?? createMarkupState())
   const [area, setArea] = useState<MarkupSize | null>(null)
   const [busy, setBusy] = useState(false)
@@ -121,6 +130,15 @@ export function MobileMarkupOverlay({ capture, onCancel, onDone, onError, initia
       onError(error instanceof Error ? error.message : 'Could not save the markup')
     }
   }
+  const finishRef = useRef(finish)
+  finishRef.current = finish
+  useEffect(() => {
+    if (autoFinishMs === undefined) {
+      return
+    }
+    const timer = setTimeout(() => void finishRef.current(), autoFinishMs)
+    return () => clearTimeout(timer)
+  }, [autoFinishMs])
 
   const draft = state.draft ? draftShape(state.draft) : null
   const cropDraft =

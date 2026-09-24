@@ -21,6 +21,7 @@ import {
 type HostProps = MobileFeedbackHostProps & {
   /** Demo route only: a drawing to open markup with, and a handle on the flow to script it. */
   markupSeed?: MarkupState
+  markupAutoFinishMs?: number
   onFlow?: (flow: MobileFeedbackFlow) => void
   sleep?: (ms: number) => Promise<void>
 }
@@ -120,6 +121,7 @@ export function MobileFeedbackHost(props: HostProps) {
         <MobileMarkupOverlay
           capture={state.capture}
           initialState={props.markupSeed}
+          autoFinishMs={props.markupAutoFinishMs}
           onCancel={() => dispatch({ type: 'cancel-markup' })}
           onDone={(image) => dispatch({ type: 'markup-done', image })}
           onError={(message) => props.onToast(message, 2000)}

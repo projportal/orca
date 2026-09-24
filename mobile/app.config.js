@@ -1,32 +1,36 @@
-// Why this file exists: a bare "expo-notifications" plugin entry writes
-// `aps-environment: development` into the iOS entitlements, while push-token.ts
-// reports `production` for every non-__DEV__ build. A TestFlight or App Store build
-// would then register a production APNs token against a sandbox entitlement, and the
-// gateway's pushes would be accepted by Apple and delivered nowhere. Deriving the
-// mode from an env var the release workflow sets makes the two agree by construction
-// instead of relying on the export step to rewrite the entitlement.
+// Orca Review fork: push notifications are off. The fork pairs over LAN and
+// Tailscale only and has no APNs gateway, so the iOS build must not carry the
+// `aps-environment` entitlement (that would require the Push Notifications
+// capability on the App ID for no benefit). The expo-notifications plugin still
+// runs, because the app code uses it for local notifications; the small plugin
+// below removes the entitlement the notifications plugin would otherwise add.
 //
-// app.json stays the source for everything else: Expo reads it first and hands it to
-// this function, so the fastlane version/buildNumber rewrite still flows through.
-const APS_ENVIRONMENT =
-  process.env.ORCA_IOS_APS_ENVIRONMENT === 'production' ? 'production' : 'development'
+// Upstream derived the entitlement from ORCA_IOS_APS_ENVIRONMENT; to turn push
+// back on, restore upstream's version of this file.
+//
+// app.json stays the source for everything else: Expo reads it first and hands it
+// to this function, so the fastlane version/buildNumber rewrite still flows through.
+const { withEntitlementsPlist } = require('expo/config-plugins')
 
-module.exports = ({ config }) => ({
-  ...config,
-  ios: {
-    ...config.ios,
-    entitlements: { ...config.ios?.entitlements, 'aps-environment': APS_ENVIRONMENT }
-  },
-  plugins: (config.plugins ?? []).map((plugin) =>
-    plugin === 'expo-notifications'
-      ? [
-          'expo-notifications',
-          {
-            enableBackgroundRemoteNotifications: true,
-            mode: APS_ENVIRONMENT,
-            icon: './assets/notification-icon.png'
-          }
-        ]
-      : plugin
-  )
-})
+const withoutApsEnvironment = (config) =>
+  withEntitlementsPlist(config, (modConfig) => {
+    delete modConfig.modResults['aps-environment']
+    return modConfig
+  })
+
+module.exports = ({ config }) => {
+  const { entitlements = {}, ...ios } = config.ios ?? {}
+  const { 'aps-environment': _removed, ...otherEntitlements } = entitlements
+  return {
+    ...config,
+    ios: { ...ios, entitlements: otherEntitlements },
+    plugins: [
+      ...(config.plugins ?? []).map((plugin) =>
+        plugin === 'expo-notifications'
+          ? ['expo-notifications', { icon: './assets/notification-icon.png' }]
+          : plugin
+      ),
+      withoutApsEnvironment
+    ]
+  }
+}

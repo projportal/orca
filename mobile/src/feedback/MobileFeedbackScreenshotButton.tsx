@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet } from 'react-native'
 import { Camera } from 'lucide-react-native'
 import { colors, radii } from '../theme/mobile-theme'
+import { FEEDBACK_CAPTURE_HINT_TEXT } from './feedback-capture-hint'
 import type { MobileFeedbackScreenshotButtonProps } from './mobile-feedback-kit'
 
 /** The toolbar's Screenshot action: freezes what is on screen for feedback. */
@@ -18,7 +19,7 @@ export function MobileFeedbackScreenshotButton({
       disabled={disabled}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Screenshot for feedback"
+      accessibilityLabel={FEEDBACK_CAPTURE_HINT_TEXT}
       hitSlop={6}
     >
       <Camera size={15} color={disabled ? colors.textMuted : colors.textSecondary} />

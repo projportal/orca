@@ -102,7 +102,7 @@ describe('HostProtocolGate', () => {
     renderer = await renderGate()
     const output = renderedText(renderer)
     expect(output).toContain('Update Orca Mobile')
-    expect(output).toContain('Open App Store')
+    expect(output).toContain('Open Orca Review README')
     expect(output).not.toContain('HostContent')
   })
 

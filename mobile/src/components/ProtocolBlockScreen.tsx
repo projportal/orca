@@ -5,8 +5,11 @@ import { colors, radii, spacing, typography } from '../theme/mobile-theme'
 import type { CompatVerdict } from '../transport/protocol-compat'
 import type { MobileWebBundleCompatVerdict } from '../transport/mobile-web-bundle-compat'
 
+// Desktop stays the unmodified upstream Orca app, so desktop updates still come from upstream.
 const RELEASES_URL = 'https://github.com/stablyai/orca/releases'
-const IOS_APP_STORE_URL = 'itms-apps://apps.apple.com/app/orca-ide/id6766130217'
+// Orca Review fork: not on the App Store (internal TestFlight only), so the mobile update link
+// points at the fork's README, which explains where builds come from.
+const FORK_README_URL = 'https://github.com/projportal/orca/blob/main/README.md#orca-review-fork'
 
 /** Every wall this screen renders: the protocol one and the bundle one. Both are terminal — there
  *  is no native workspace to fall back to, so the only way out is updating one of the two apps. */
@@ -71,7 +74,7 @@ export function ProtocolBlockScreen({ verdict }: Props) {
   // Why: Android APKs ship through GitHub Releases until a Play Store listing exists.
   const mobileUpdateTarget =
     Platform.OS === 'ios'
-      ? { label: 'Open App Store', url: IOS_APP_STORE_URL, storeName: 'the App Store' }
+      ? { label: 'Open Orca Review README', url: FORK_README_URL, storeName: 'TestFlight' }
       : { label: 'Open GitHub Releases', url: RELEASES_URL, storeName: 'GitHub Releases' }
   // No download to offer when the fix is a refetch: reconnecting is what this screen leaves you to do.
   const primaryAction =

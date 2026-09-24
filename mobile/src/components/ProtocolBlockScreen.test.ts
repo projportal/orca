@@ -73,9 +73,9 @@ describe('ProtocolBlockScreen', () => {
     })
     expect(mobile).toContain('Update Orca Mobile')
     expect(mobile).toContain(
-      'This desktop needs a newer Orca Mobile app. Update Orca Mobile from the App Store, then try this host again.'
+      'This desktop needs a newer Orca Mobile app. Update Orca Mobile from TestFlight, then try this host again.'
     )
-    expect(mobile).toContain('Open App Store')
+    expect(mobile).toContain('Open Orca Review README')
     act(() => renderer?.unmount())
 
     const desktop = render({
@@ -108,9 +108,11 @@ describe('ProtocolBlockScreen', () => {
     })
     expect(output).toContain('Update Orca Mobile')
     expect(output).toContain(
-      "This desktop's mobile workspace needs a newer Orca Mobile app. Update Orca Mobile from the App Store, then try this host again."
+      "This desktop's mobile workspace needs a newer Orca Mobile app. Update Orca Mobile from TestFlight, then try this host again."
     )
-    expect(primaryActionUrl()).toBe('itms-apps://apps.apple.com/app/orca-ide/id6766130217')
+    expect(primaryActionUrl()).toBe(
+      'https://github.com/projportal/orca/blob/main/README.md#orca-review-fork'
+    )
   })
 
   it('offers no download for a cached bundle the host outgrew, because none would clear it', () => {
@@ -127,7 +129,7 @@ describe('ProtocolBlockScreen', () => {
       'The workspace cached for this host is older than the desktop expects. Reconnect to this host to download the current one.'
     )
     // A store update cannot replace a stale cache, so neither store link is offered.
-    expect(output).not.toContain('Open App Store')
+    expect(output).not.toContain('Open Orca Review README')
     expect(output).not.toContain('Open GitHub Releases')
     expect(output).not.toContain('Update Orca')
     // Back to hosts is the only button left, and it is not a download.

@@ -42,6 +42,52 @@ What changed (all in `mobile/`), and why:
 
 Kept on purpose: the `orca://` URL scheme (so the desktop's pairing QR links still open this app; do not install the official Orca app on the same phone), the RPC protocol constants (so it pairs with unmodified Orca desktop), and the MIT license and copyright notice.
 
+### Feedback from the phone (screenshot → markup → send to agent)
+
+TestFlight-style feedback on what an agent built, with no desktop change. Code: `mobile/src/feedback/`.
+
+| Step | What happens |
+|---|---|
+| Screenshot | A camera button in the browser pane toolbar (and in the HTML preview toolbar) freezes what is on screen. In the browser pane that is the last screencast frame, whose JPEG bytes are already on the phone, written as-is to `<cache>/orca-review-feedback/`; the HTML preview is snapshotted with `react-native-view-shot`. A 240 px thumbnail appears bottom-left. The cache keeps at most 12 screenshots for 3 days. |
+| Markup | Tap the thumbnail: pen, arrow, box, text label, six colours, undo and crop over the frozen image. While markup is open no touch reaches the live page (no click, move, scroll or long-press right click). Done flattens drawing + image into one PNG at the frame's own resolution, then crops. |
+| Composer | A sheet with a comment (up to 4,000 characters), an intent (Change / Question) and an automatic header: page URL, browser tab id, viewport, view mode, device model, OS, app version. |
+| Send to agent | The same target rows as review notes: an existing agent terminal in the worktree, New Agent Session, or Copy. Sending uploads the PNG over the existing chunked clipboard image upload (the desktop answers a temp file path), pastes the message and then the image path as two bracketed pastes, waits the desktop's usual submit delay, and presses Enter. The item is marked Delivered in the phone's feedback list. |
+
+What the agent receives (shape of the desktop's own annotation output):
+
+```markdown
+## Design feedback: /pricing?plan=pro
+
+| Field | Value |
+|---|---|
+| URL | http://localhost:5173/pricing?plan=pro |
+| Browser tab id | page-7 |
+| Viewport | 402x560 |
+| View mode | mobile |
+| Device | iPhone 17 Pro |
+| OS | iOS 26.3 |
+| App | Orca Review 0.1.0 (1) |
+
+**Intent:** change
+**Feedback:**
+The CTA covers the price. Move it below.
+
+**Screenshot** (phone screencast frame, 1206x1680, marked up on the phone):
+```
+
+followed by the pasted image path (for example `/tmp/…/orca-clipboard-….png`), then Enter.
+
+Limits (phase 1):
+
+- The image is the phone's screencast frame (JPEG, quality about 72, at the phone's layout size times its pixel ratio), not a full-resolution capture of the page. A full-resolution PNG needs the desktop to allow `browser.screenshot` for mobile, which is a desktop change and out of scope here.
+- The host image path is a temp file; the agent should read it promptly (the desktop cleans it up).
+- Agents that do not attach raw image paths (not claude, codex, gemini, cursor, copilot, droid, grok, openclaude) get an `@path` reference instead, as with a desktop paste.
+- The feedback list lives in memory for the app session; it is not synced anywhere.
+- Enter is sent after a fixed settle delay because the phone cannot see the agent's input line.
+- Not in the page (web) build: the Screenshot action does not render there.
+
+Demo without a desktop (development only): build the app with `ORCA_REVIEW_FEEDBACK_DEMO=1` in the environment, then open `orca://feedback-demo?step=markup` (steps: `toolbar`, `captured`, `markup`, `markup-label`, `crop`, `composer`, `picker`, `delivered`, `html`). It runs the real flow on a bundled sample frame against an in-process stand-in desktop. In any build without that variable the route only redirects home, and the demo code and sample frame are not in the bundle.
+
 Trademark note: the fork still uses the upstream Orca icons for now. "Orca" and its icon belong to their owners; replace the icons before any wider distribution.
 
 ## Features

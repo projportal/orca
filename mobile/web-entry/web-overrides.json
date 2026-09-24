@@ -186,6 +186,10 @@
       "reason": "The page holds no device push token and cannot register one, and the import is the defect rather than the calls: expo-notifications runs DevicePushTokenAutoRegistration.fx at import, which reads the persisted registration behind a typeof localStorage === 'undefined' guard that the shell's DOM-storage-off WebView walks through with null, raising \"Cannot read properties of null (reading 'getItem')\" on every page load."
     },
     {
+      "file": "src/feedback/feedback-platform.web.ts",
+      "reason": "Orca Review fork. The screenshot, markup and send-to-agent flow needs a cache directory (expo-file-system), an image manipulator for thumbnails and crops, a view snapshot (react-native-view-shot) and the device model (expo-device); the first three are native modules with no browser counterpart and their imports would take the session route's page down. This sibling answers feedbackCaptureSupported = false, so the browser pane and the HTML preview render no Screenshot action in the page, and every function refuses rather than pretending."
+    },
+    {
       "file": "src/notifications/desktop-notification-channel.web.ts",
       "reason": "The page creates no Android notification channel and the native file already returns early off Android, so what this sibling changes is the import of expo-notifications, whose import-time read breaks the document for the reason push-token.web.ts beside it gives."
     }

@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native'
-import { MessageSquarePlus, PenLine, Trash2 } from 'lucide-react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { StyleSheet, View } from 'react-native'
 import { BottomDrawer } from '../components/BottomDrawer'
-import { colors, radii, spacing } from '../theme/mobile-theme'
 import { feedbackCaptureHintGate } from './feedback-capture-hint'
 import { feedbackFlowHoldsViewport, type FeedbackFlowState } from './feedback-flow'
 import type { FeedbackHeader } from './feedback-message'
 import { feedbackCaptureSupported, readFeedbackDeviceInfo } from './feedback-platform'
-import { FEEDBACK_CHIP_GAP, FEEDBACK_CHIP_HEIGHT } from './feedback-touch-targets'
 import type { MarkupState } from './markup-model'
 import type { MobileFeedbackHostProps, MobileFeedbackKit } from './mobile-feedback-kit'
 import { MobileFeedbackCaptureHint } from './MobileFeedbackCaptureHint'
 import { MobileFeedbackComposer } from './MobileFeedbackComposer'
 import { MobileFeedbackDelivered } from './MobileFeedbackDelivered'
 import { MobileFeedbackScreenshotButton } from './MobileFeedbackScreenshotButton'
+import {
+  MobileFeedbackCapturingChip,
+  MobileFeedbackThumbnailChip
+} from './MobileFeedbackThumbnailChip'
 import { MobileMarkupOverlay } from './MobileMarkupOverlay'
 import {
   useMobileFeedbackFlow,
@@ -126,37 +127,14 @@ export function MobileFeedbackHost(props: HostProps) {
           onDismiss={dismissHint}
         />
       ) : null}
-      {state.kind === 'capturing' ? (
-        <View style={[styles.chip, styles.chipBusy]}>
-          <ActivityIndicator size="small" color={colors.textPrimary} />
-        </View>
-      ) : null}
+      {state.kind === 'capturing' ? <MobileFeedbackCapturingChip /> : null}
       {state.kind === 'captured' ? (
-        <View style={styles.chip}>
-          <Pressable
-            style={styles.thumbButton}
-            onPress={() => dispatch({ type: 'open-markup' })}
-            accessibilityRole="button"
-            accessibilityLabel="Mark up screenshot"
-          >
-            <Image
-              source={{ uri: state.capture.thumbnailUri }}
-              style={[styles.thumb, { aspectRatio: state.capture.width / state.capture.height }]}
-            />
-          </Pressable>
-          <View style={styles.chipActions}>
-            <ChipButton label="Mark up" onPress={() => dispatch({ type: 'open-markup' })}>
-              <PenLine size={14} color={colors.bgBase} strokeWidth={2.4} />
-            </ChipButton>
-            {/* Opens the composer; nothing is sent until its "Send to agent". */}
-            <ChipButton label="Add feedback" onPress={() => dispatch({ type: 'skip-markup' })}>
-              <MessageSquarePlus size={14} color={colors.bgBase} strokeWidth={2.4} />
-            </ChipButton>
-            <ChipButton label="Discard screenshot" onPress={close} subtle>
-              <Trash2 size={14} color={colors.textPrimary} strokeWidth={2.2} />
-            </ChipButton>
-          </View>
-        </View>
+        <MobileFeedbackThumbnailChip
+          capture={state.capture}
+          onMarkUp={() => dispatch({ type: 'open-markup' })}
+          onAddFeedback={() => dispatch({ type: 'skip-markup' })}
+          onDiscard={close}
+        />
       ) : null}
       {state.kind === 'markup' ? (
         <MobileMarkupOverlay
@@ -191,71 +169,9 @@ export function MobileFeedbackHost(props: HostProps) {
   )
 }
 
-function ChipButton(props: {
-  label: string
-  onPress: () => void
-  subtle?: boolean
-  children: ReactNode
-}) {
-  return (
-    <Pressable
-      onPress={props.onPress}
-      accessibilityRole="button"
-      accessibilityLabel={props.label}
-      style={({ pressed }) => [
-        styles.chipButton,
-        props.subtle && styles.chipButtonSubtle,
-        pressed && styles.pressed
-      ]}
-    >
-      {props.children}
-      <Text style={[styles.chipButtonText, props.subtle && styles.chipButtonTextSubtle]}>
-        {props.label}
-      </Text>
-    </Pressable>
-  )
-}
-
 /** Handed to the browser pane and the HTML preview by the session screen. */
 export const MOBILE_FEEDBACK_KIT: MobileFeedbackKit = {
   supported: feedbackCaptureSupported,
   Host: MobileFeedbackHost,
   ScreenshotButton: MobileFeedbackScreenshotButton
 }
-
-const styles = StyleSheet.create({
-  chip: {
-    position: 'absolute',
-    left: spacing.md,
-    bottom: spacing.md,
-    zIndex: 35,
-    padding: 6,
-    gap: 6,
-    borderRadius: radii.card,
-    backgroundColor: 'rgba(26,26,26,0.94)',
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    shadowColor: '#000',
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }
-  },
-  chipBusy: { width: 56, height: 56, alignItems: 'center', justifyContent: 'center' },
-  thumbButton: { alignSelf: 'center' },
-  thumb: { width: 96, borderRadius: 8, backgroundColor: colors.bgRaised },
-  chipActions: { gap: FEEDBACK_CHIP_GAP },
-  chipButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    height: FEEDBACK_CHIP_HEIGHT,
-    paddingHorizontal: spacing.md,
-    borderRadius: FEEDBACK_CHIP_HEIGHT / 2,
-    backgroundColor: colors.textPrimary
-  },
-  chipButtonSubtle: { backgroundColor: colors.bgRaised },
-  chipButtonText: { color: colors.bgBase, fontSize: 13, fontWeight: '700' },
-  chipButtonTextSubtle: { color: colors.textPrimary },
-  pressed: { opacity: 0.75 }
-})

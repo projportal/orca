@@ -12,13 +12,15 @@ import {
 import { colors, radii, spacing } from '../theme/mobile-theme'
 import {
   MARKUP_CANCEL_FRAME,
-  MARKUP_ICON_FRAME,
+  MARKUP_ICON_GLYPH,
   MARKUP_PILL_FRAME,
+  MARKUP_PILL_GLYPH_HEIGHT,
   MARKUP_ROW_GAP,
-  MARKUP_SWATCH_FRAME,
+  MARKUP_ROW_MIN_HEIGHT,
   MARKUP_SWATCH_GAP,
-  MARKUP_TOOL_GAP,
-  touchHitSlop
+  MARKUP_SWATCH_GLYPH,
+  MARKUP_TARGET_FRAME,
+  MARKUP_TOOL_GAP
 } from './feedback-touch-targets'
 import { markupToolHint } from './markup-tool-hint'
 import { MARKUP_COLORS, type MarkupTool } from './markup-model'
@@ -30,11 +32,6 @@ const TOOLS: { tool: MarkupTool; label: string; icon: LucideIcon }[] = [
   { tool: 'text', label: 'Text', icon: Type },
   { tool: 'crop', label: 'Crop', icon: Crop }
 ]
-
-const ICON_SLOP = touchHitSlop(MARKUP_ICON_FRAME)
-const SWATCH_SLOP = touchHitSlop(MARKUP_SWATCH_FRAME)
-const PILL_SLOP = touchHitSlop(MARKUP_PILL_FRAME)
-const CANCEL_SLOP = touchHitSlop(MARKUP_CANCEL_FRAME)
 
 type Props = {
   tool: MarkupTool
@@ -58,17 +55,18 @@ export function MobileMarkupToolbar(props: Props) {
       <View style={styles.row}>
         <Pressable
           style={({ pressed }) => [
-            styles.cancel,
+            styles.cancelTarget,
             pressed && styles.pressed,
             busy && styles.disabled
           ]}
           onPress={props.onCancel}
           disabled={busy}
-          hitSlop={CANCEL_SLOP}
           accessibilityRole="button"
           accessibilityLabel="Cancel markup"
         >
-          <Text style={styles.cancelText}>Cancel</Text>
+          <View style={styles.cancel}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </View>
         </Pressable>
         <View style={styles.actions}>
           <IconButton
@@ -78,19 +76,20 @@ export function MobileMarkupToolbar(props: Props) {
             disabled={busy || !canUndo}
           />
           <Pressable
-            style={({ pressed }) => [styles.done, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.doneTarget, pressed && styles.pressed]}
             onPress={props.onDone}
             disabled={busy}
-            hitSlop={PILL_SLOP}
             accessibilityRole="button"
             accessibilityLabel="Done"
           >
-            {busy ? (
-              <ActivityIndicator size="small" color={colors.bgBase} />
-            ) : (
-              <Check size={16} color={colors.bgBase} strokeWidth={2.6} />
-            )}
-            <Text style={styles.doneText}>Done</Text>
+            <View style={styles.done}>
+              {busy ? (
+                <ActivityIndicator size="small" color={colors.bgBase} />
+              ) : (
+                <Check size={16} color={colors.bgBase} strokeWidth={2.6} />
+              )}
+              <Text style={styles.doneText}>Done</Text>
+            </View>
           </Pressable>
         </View>
       </View>
@@ -122,13 +121,14 @@ export function MobileMarkupToolbar(props: Props) {
                 <Pressable
                   key={swatch}
                   onPress={() => props.onColor(swatch)}
-                  hitSlop={SWATCH_SLOP}
                   accessibilityRole="button"
                   accessibilityLabel={`Colour ${swatch}`}
                   accessibilityState={{ selected: swatch === color }}
-                  style={[styles.swatch, swatch === color && styles.swatchActive]}
+                  style={styles.target}
                 >
-                  <View style={[styles.swatchFill, { backgroundColor: swatch }]} />
+                  <View style={[styles.swatch, swatch === color && styles.swatchActive]}>
+                    <View style={[styles.swatchFill, { backgroundColor: swatch }]} />
+                  </View>
                 </Pressable>
               ))}
             </View>
@@ -136,7 +136,6 @@ export function MobileMarkupToolbar(props: Props) {
           {hasCrop ? (
             <Pressable
               onPress={props.onResetCrop}
-              hitSlop={PILL_SLOP}
               accessibilityRole="button"
               style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
             >
@@ -160,19 +159,23 @@ function IconButton(props: {
   return (
     <Pressable
       style={({ pressed }) => [
-        styles.icon,
-        props.active && styles.iconActive,
+        styles.target,
         pressed && styles.pressed,
         props.disabled && styles.disabled
       ]}
       onPress={props.onPress}
       disabled={props.disabled}
-      hitSlop={ICON_SLOP}
       accessibilityRole="button"
       accessibilityLabel={props.label}
       accessibilityState={{ selected: props.active === true, disabled: props.disabled === true }}
     >
-      <Icon size={17} color={props.active ? colors.bgBase : colors.textPrimary} strokeWidth={2.2} />
+      <View style={[styles.icon, props.active && styles.iconActive]}>
+        <Icon
+          size={17}
+          color={props.active ? colors.bgBase : colors.textPrimary}
+          strokeWidth={2.2}
+        />
+      </View>
     </Pressable>
   )
 }
@@ -180,18 +183,28 @@ function IconButton(props: {
 const styles = StyleSheet.create({
   bar: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
     gap: MARKUP_ROW_GAP,
     backgroundColor: colors.bgPanel,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle
   },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  row: {
+    minHeight: MARKUP_ROW_MIN_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
   actions: { flexDirection: 'row', alignItems: 'center', gap: MARKUP_TOOL_GAP },
   tools: { flexDirection: 'row', gap: MARKUP_TOOL_GAP },
+  target: {
+    ...MARKUP_TARGET_FRAME,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   icon: {
-    ...MARKUP_ICON_FRAME,
+    ...MARKUP_ICON_GLYPH,
     borderRadius: radii.button,
     alignItems: 'center',
     justifyContent: 'center'
@@ -199,21 +212,29 @@ const styles = StyleSheet.create({
   iconActive: { backgroundColor: colors.textPrimary },
   pressed: { opacity: 0.7 },
   disabled: { opacity: 0.35 },
-  cancel: {
+  cancelTarget: {
     minWidth: MARKUP_CANCEL_FRAME.width,
     height: MARKUP_CANCEL_FRAME.height,
+    justifyContent: 'center'
+  },
+  cancel: {
+    height: MARKUP_PILL_GLYPH_HEIGHT,
     paddingHorizontal: spacing.md,
-    borderRadius: MARKUP_CANCEL_FRAME.height / 2,
+    borderRadius: MARKUP_PILL_GLYPH_HEIGHT / 2,
     backgroundColor: colors.bgRaised,
     alignItems: 'center',
     justifyContent: 'center'
   },
   cancelText: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  done: {
+  doneTarget: {
     minWidth: MARKUP_PILL_FRAME.width,
     height: MARKUP_PILL_FRAME.height,
+    justifyContent: 'center'
+  },
+  done: {
+    height: MARKUP_PILL_GLYPH_HEIGHT,
     paddingHorizontal: spacing.md,
-    borderRadius: MARKUP_PILL_FRAME.height / 2,
+    borderRadius: MARKUP_PILL_GLYPH_HEIGHT / 2,
     backgroundColor: colors.statusGreen,
     flexDirection: 'row',
     gap: 6,
@@ -223,8 +244,8 @@ const styles = StyleSheet.create({
   doneText: { color: colors.bgBase, fontSize: 14, fontWeight: '700' },
   swatches: { flexDirection: 'row', gap: MARKUP_SWATCH_GAP },
   swatch: {
-    ...MARKUP_SWATCH_FRAME,
-    borderRadius: MARKUP_SWATCH_FRAME.width / 2,
+    ...MARKUP_SWATCH_GLYPH,
+    borderRadius: MARKUP_SWATCH_GLYPH.width / 2,
     borderWidth: 2,
     borderColor: 'transparent',
     alignItems: 'center',
@@ -240,7 +261,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginLeft: spacing.sm,
     textAlign: 'right',
     color: colors.textSecondary,
     fontSize: 14,

@@ -25,6 +25,7 @@ import type { BrowserPageCommandSend, BrowserPageParams } from './use-mobile-bro
 import type { BrowserScreencastFrameMetadata } from '../transport/browser-screencast-protocol'
 
 import { useMobileBrowserCommands } from './use-mobile-browser-commands'
+import { shouldForwardBrowserTouch } from '../feedback/markup-input-gate'
 const TAP_SLOP = 16
 const SCROLL_START_SLOP = 22
 const LONG_PRESS_MS = 550
@@ -45,6 +46,8 @@ type MobileBrowserInteractionArgs = {
   keyboardValue: string
   layoutRef: { current: BrowserTouchLayout | null }
   longPressTimerRef: { current: ReturnType<typeof setTimeout> | null }
+  /** True while feedback markup draws over the viewport; no touch reaches the page then. */
+  markupArmedRef?: { current: boolean }
   onToast: (message: string, durationMs?: number) => void
   pageParams: () => BrowserPageParams | null
   panRef: { current: PanGesture | null }
@@ -71,6 +74,7 @@ export function useMobileBrowserInteractions(args: MobileBrowserInteractionArgs)
     keyboardValue,
     layoutRef,
     longPressTimerRef,
+    markupArmedRef,
     onToast,
     pageParams,
     panRef,
@@ -113,6 +117,16 @@ export function useMobileBrowserInteractions(args: MobileBrowserInteractionArgs)
     zoomRef
   })
 
+  // The move and release handlers below re-read the ref: markup can arm mid-gesture.
+  const touchForwardingAllowed = useCallback(
+    () =>
+      shouldForwardBrowserTouch({
+        dialogOpen: dialogRef.current !== null,
+        markupArmed: markupArmedRef?.current === true
+      }),
+    [dialogRef, markupArmedRef]
+  )
+
   const handleResponderGrant = useCallback(
     (event: GestureResponderEvent) => {
       const pinch = createPinchGesture(event, frameGeometry, zoomRef.current)
@@ -144,7 +158,7 @@ export function useMobileBrowserInteractions(args: MobileBrowserInteractionArgs)
       clearLongPressTimer()
       longPressTimerRef.current = setTimeout(() => {
         const start = startPointRef.current
-        if (!start) {
+        if (!start || markupArmedRef?.current) {
           return
         }
         const point = mapTouchPoint(start.x, start.y)
@@ -161,6 +175,10 @@ export function useMobileBrowserInteractions(args: MobileBrowserInteractionArgs)
 
   const handleResponderMove = useCallback(
     (event: GestureResponderEvent, gesture: PanResponderGestureState) => {
+      if (markupArmedRef?.current) {
+        clearLongPressTimer()
+        return
+      }
       const startedPinch = pinchRef.current
         ? null
         : createPinchGesture(event, frameGeometry, zoomRef.current)
@@ -249,7 +267,7 @@ export function useMobileBrowserInteractions(args: MobileBrowserInteractionArgs)
       startPointRef.current = null
       const wasScrolling = scrollingRef.current
       scrollingRef.current = false
-      if (!start || rightClickSentRef.current || wasScrolling) {
+      if (!start || rightClickSentRef.current || wasScrolling || markupArmedRef?.current) {
         return
       }
       const moved = Math.hypot(gesture.dx, gesture.dy)
@@ -269,8 +287,8 @@ export function useMobileBrowserInteractions(args: MobileBrowserInteractionArgs)
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => dialogRef.current === null,
-        onMoveShouldSetPanResponder: () => dialogRef.current === null,
+        onStartShouldSetPanResponder: touchForwardingAllowed,
+        onMoveShouldSetPanResponder: touchForwardingAllowed,
         onPanResponderGrant: handleResponderGrant,
         onPanResponderMove: handleResponderMove,
         onPanResponderRelease: handleResponderRelease,
@@ -283,7 +301,13 @@ export function useMobileBrowserInteractions(args: MobileBrowserInteractionArgs)
         },
         onPanResponderTerminationRequest: () => true
       }),
-    [clearLongPressTimer, handleResponderGrant, handleResponderMove, handleResponderRelease]
+    [
+      clearLongPressTimer,
+      handleResponderGrant,
+      handleResponderMove,
+      handleResponderRelease,
+      touchForwardingAllowed
+    ]
   )
 
   return { panResponder, sendDialogCommand, sendKeyboardText, sendKeypress, togglePointerModifier }

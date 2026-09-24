@@ -1,2 +1,3 @@
-app_identifier(ENV["IOS_BUNDLE_IDENTIFIER"] || "com.stably.orca.mobile")
-team_id(ENV["APPLE_TEAM_ID"])
+# Orca Review fork (iPhone only): own bundle id and Apple team.
+app_identifier(ENV["IOS_BUNDLE_IDENTIFIER"] || "com.portalinteractive.orcareview")
+team_id(ENV["APPLE_TEAM_ID"] || "8NPWF8HQ4F")

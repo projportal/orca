@@ -24,13 +24,15 @@ module.exports = ({ config }) => {
   return {
     ...config,
     ios: { ...ios, entitlements: otherEntitlements },
+    // Why first: Expo runs a mod registered later before one registered earlier, so the
+    // stripper must be registered first to run after expo-notifications adds the entitlement.
     plugins: [
+      withoutApsEnvironment,
       ...(config.plugins ?? []).map((plugin) =>
         plugin === 'expo-notifications'
           ? ['expo-notifications', { icon: './assets/notification-icon.png' }]
           : plugin
-      ),
-      withoutApsEnvironment
+      )
     ]
   }
 }

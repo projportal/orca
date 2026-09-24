@@ -11,6 +11,7 @@ import type { TerminalQuickCommand } from '../../src/shared/terminal-quick-comma
 import { handleMockFilePreviewRequest } from './mock-server-file-preview-data'
 import { handleMockGitRequest } from './mock-server-git-state'
 import { handleMockAccountRequest } from './mock-server-account-rpc'
+import { handleMockClipboardImageRequest } from './mock-server-clipboard-image'
 import { handleMockNativeChatRequest } from './mock-server-native-chat-scenario'
 import { handleMockSessionTabsRequest } from './mock-server-session-tabs-fixture'
 import { handleMockTerminalRequest } from './mock-server-terminal-stream'
@@ -130,6 +131,7 @@ export function handleRequest(
     handleMockAccountRequest(request, respond, success, error) ||
     handleMockNativeChatRequest(request, respond, success, error, ws) ||
     handleMockSessionTabsRequest(request, respond, success, terminalListWorktreeId) ||
+    handleMockClipboardImageRequest(request, respond, success, error) ||
     handleMockTerminalRequest(request, respond, success, ws, terminalListWorktreeId)
   ) {
     return

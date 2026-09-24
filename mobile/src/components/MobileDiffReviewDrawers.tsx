@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native'
-import { Check, Copy, FileText, Plus, Send, Trash2, X } from 'lucide-react-native'
+import { Check, Copy, FileText, Send, Trash2, X } from 'lucide-react-native'
 import type { DiffComment } from '../../../src/shared/diff-comment-types'
 import { useKeyboardAvoidingPadding } from '../platform/keyboard-occlusion'
 import { colors } from '../theme/mobile-theme'
 import type { ActionSheetAction } from './ActionSheetModal'
 import { ActionSheetModal } from './ActionSheetModal'
+import { buildAgentTargetActions } from './agent-target-actions'
 import { BottomDrawer } from './BottomDrawer'
 import { ConfirmModal } from './ConfirmModal'
 import { mobileReviewCountLabel } from '../session/mobile-diff-review-screen-model'
@@ -67,33 +68,20 @@ export function MobileDiffReviewDrawers({ controller }: Props) {
 function useSendActions(controller: ReturnType<typeof useMobileDiffReviewController>) {
   return useMemo<ActionSheetAction[]>(() => {
     const comments = controller.unsentComments
-    const terminalActions =
-      controller.sendSheet?.kind === 'ready' || controller.sendSheet?.kind === 'error'
-        ? controller.sendSheet.terminals.map((terminal) => ({
-            label: `${terminal.title || 'Terminal'} (${terminal.terminal.slice(0, 6)})`,
-            icon: Send,
-            disabled: comments.length === 0,
-            skipAutoClose: true,
-            onPress: () => void controller.sendPromptToTerminal(terminal.terminal, comments)
-          }))
-        : []
-    return [
-      ...terminalActions,
-      {
-        label: 'New Agent Session',
-        icon: Plus,
-        disabled: comments.length === 0,
-        skipAutoClose: true,
-        onPress: () => void controller.createTerminalAndSend(comments)
-      },
-      {
-        label: 'Copy Notes',
-        icon: Copy,
-        disabled:
-          controller.screenState.kind !== 'ready' || controller.screenState.comments.length === 0,
-        onPress: () => void controller.copyNotes()
-      }
-    ]
+    return buildAgentTargetActions({
+      terminals:
+        controller.sendSheet?.kind === 'ready' || controller.sendSheet?.kind === 'error'
+          ? controller.sendSheet.terminals
+          : [],
+      sendDisabled: comments.length === 0,
+      copyLabel: 'Copy Notes',
+      copyDisabled:
+        controller.screenState.kind !== 'ready' || controller.screenState.comments.length === 0,
+      onSendToTerminal: (terminal) =>
+        void controller.sendPromptToTerminal(terminal.terminal, comments),
+      onNewSession: () => void controller.createTerminalAndSend(comments),
+      onCopy: () => void controller.copyNotes()
+    })
   }, [controller])
 }
 

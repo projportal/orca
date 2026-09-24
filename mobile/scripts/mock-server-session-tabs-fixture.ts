@@ -14,6 +14,7 @@ const PARENT_TAB_ID = 'tab-1'
 const LEAF_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479'
 // The host publishes terminal surfaces as `${parentTabId}::${leafId}`.
 const SURFACE_TAB_ID = `${PARENT_TAB_ID}::${LEAF_ID}`
+let createdTerminalSequence = 0
 
 /** One ready terminal tab bound to the `term-1` fixture. Mirrors the full
  *  `session.tabs.list` contract so mock-server repros of tab, split-pane, and
@@ -73,6 +74,26 @@ export function handleMockSessionTabsRequest(
     const snapshot = createMockSessionTabs(worktreeId)
     respond(success(request.id, { type: 'snapshot', ...snapshot }, true))
     respond(success(request.id, { type: 'updated', ...snapshot }, true))
+    return true
+  }
+  if (request.method === 'session.tabs.createTerminal') {
+    // The review-notes and feedback "New Agent Session" rows address their send at this handle.
+    createdTerminalSequence += 1
+    respond(
+      success(request.id, {
+        tab: {
+          type: 'terminal',
+          id: `${PARENT_TAB_ID}-new-${createdTerminalSequence}::${LEAF_ID}`,
+          title: 'claude',
+          parentTabId: `${PARENT_TAB_ID}-new-${createdTerminalSequence}`,
+          leafId: LEAF_ID,
+          status: 'ready',
+          terminal: `term-new-${createdTerminalSequence}`,
+          launchAgent: 'claude',
+          isActive: false
+        }
+      })
+    )
     return true
   }
   if (request.method === 'session.tabs.unsubscribe') {

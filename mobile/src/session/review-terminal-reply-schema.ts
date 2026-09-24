@@ -22,9 +22,17 @@ const reviewTerminalTabSchema = z
     type: z.literal('terminal'),
     id: z.string().min(1),
     terminal: z.string().min(1),
-    title: salvagedOptional('title', z.string())
+    title: salvagedOptional('title', z.string()),
+    // Optional and salvaged: only the feedback send reads it, to paste an image path in the form
+    // the tab's agent attaches (raw path vs @-reference), exactly as the composer's attach does.
+    launchAgent: salvagedOptional('launchAgent', z.string())
   })
-  .transform((tab) => ({ id: tab.id, terminal: tab.terminal, title: tab.title ?? 'Terminal' }))
+  .transform((tab) => ({
+    id: tab.id,
+    terminal: tab.terminal,
+    title: tab.title ?? 'Terminal',
+    ...(tab.launchAgent ? { agent: tab.launchAgent } : {})
+  }))
 
 /**
  * The agent terminals the send sheet lists.

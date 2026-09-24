@@ -29,6 +29,8 @@ import { MobileBrowserPaneView } from './MobileBrowserPaneView'
 import { useMobileBrowserInteractions } from './use-mobile-browser-interactions'
 import { useMobileBrowserStream } from './use-mobile-browser-stream'
 import { useBrowserBinaryScreencastGrant } from './use-browser-binary-screencast-grant'
+import type { MobileFeedbackBinding } from '../feedback/mobile-feedback-kit'
+import { useBrowserPaneFeedback } from './use-browser-pane-feedback'
 
 export type MobileBrowserTab = {
   type: 'browser'
@@ -51,6 +53,8 @@ type MobileBrowserPaneProps = {
   keyboardLift: number
   bottomInset: number
   onToast: (message: string, durationMs?: number) => void
+  /** Orca Review: the screenshot + markup + send-to-agent flow, handed in by the session screen. */
+  feedback?: MobileFeedbackBinding
 }
 
 type PanGesture = {
@@ -69,7 +73,8 @@ export function MobileBrowserPane({
   screencastSupported,
   keyboardLift,
   bottomInset,
-  onToast
+  onToast,
+  feedback
 }: MobileBrowserPaneProps) {
   const [browserViewMode, setBrowserViewMode] = useState<MobileBrowserViewMode>(() =>
     getInitialMobileBrowserViewMode(worktreeId, tab.browserPageId, tab.url)
@@ -235,11 +240,29 @@ export function MobileBrowserPane({
     }
   }, [addressValue, resetBrowserZoomState, sendBrowserRequest])
 
+  const resetGestures = useCallback(() => {
+    clearLongPressTimer()
+    pinchRef.current = null
+    panRef.current = null
+    scrollingRef.current = false
+    startPointRef.current = null
+  }, [clearLongPressTimer])
+  const paneFeedback = useBrowserPaneFeedback({
+    feedback,
+    cacheKey,
+    tab,
+    browserViewMode,
+    frameMetadata,
+    hasFrame: renderedFrameSource !== null,
+    resetGestures
+  })
+
   const { panResponder, sendDialogCommand, sendKeyboardText, sendKeypress, togglePointerModifier } =
     useMobileBrowserInteractions({
       clearLongPressTimer,
       client,
       dialogRef,
+      markupArmedRef: paneFeedback.markupArmedRef,
       frameGeometry,
       frameMetadataRef,
       keyboardValue,
@@ -316,6 +339,8 @@ export function MobileBrowserPane({
       controlsDisabled={controlsDisabled}
       dialog={dialog}
       error={error}
+      feedbackButton={paneFeedback.toolbarButton}
+      feedbackLayer={paneFeedback.viewportLayer}
       frameGeometry={frameGeometry}
       frameLayers={frameLayers}
       goBack={goBack}

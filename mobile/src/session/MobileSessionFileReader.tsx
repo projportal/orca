@@ -19,6 +19,7 @@ import {
   resolveMobileSyntaxLanguage
 } from './mobile-file-syntax'
 import { MobileHtmlPreview } from '../components/MobileHtmlPreview'
+import type { MobileFeedbackBinding } from '../feedback/mobile-feedback-kit'
 import { colors } from '../theme/mobile-theme'
 import { styles } from './mobile-session-styles'
 import type { DiffComment } from '../../../src/shared/diff-comment-types'
@@ -36,13 +37,16 @@ export function FileReader({
   title,
   relativePath,
   language,
-  diffCommentActions
+  diffCommentActions,
+  feedback
 }: {
   doc: FileDocState | undefined
   title: string
   relativePath: string
   language?: string
   diffCommentActions?: DiffCommentActions
+  /** Orca Review: lets the HTML preview take a screenshot for feedback. */
+  feedback?: MobileFeedbackBinding
 }) {
   const syntaxLanguage = useMemo(
     () => resolveMobileSyntaxLanguage(relativePath || title, language),
@@ -293,7 +297,11 @@ export function FileReader({
   if (doc.kind === 'html') {
     return (
       <View style={styles.markdownEditor}>
-        <MobileHtmlPreview html={doc.content} renderSource={() => renderSourceText(doc.content)} />
+        <MobileHtmlPreview
+          html={doc.content}
+          renderSource={() => renderSourceText(doc.content)}
+          feedback={feedback ? { ...feedback, pageLabel: relativePath || title } : undefined}
+        />
       </View>
     )
   }

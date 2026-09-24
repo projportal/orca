@@ -1,4 +1,4 @@
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { Dispatch, ReactNode, RefObject, SetStateAction } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -47,6 +47,9 @@ type MobileBrowserPaneViewProps = {
   controlsDisabled: boolean
   dialog: BrowserDialogState | null
   error: string | null
+  /** Orca Review feedback: the toolbar's Screenshot action and the layer over the viewport. */
+  feedbackButton?: ReactNode
+  feedbackLayer?: ReactNode
   frameGeometry: BrowserFrameGeometry | null
   frameLayers: readonly [BrowserFrameLayerBinding, BrowserFrameLayerBinding]
   goBack: () => void
@@ -93,6 +96,8 @@ export function MobileBrowserPaneView(props: MobileBrowserPaneViewProps) {
     controlsDisabled,
     dialog,
     error,
+    feedbackButton,
+    feedbackLayer,
     frameGeometry,
     frameLayers,
     goBack,
@@ -156,6 +161,7 @@ export function MobileBrowserPaneView(props: MobileBrowserPaneViewProps) {
           value={browserViewMode}
           onChange={selectBrowserViewMode}
         />
+        {feedbackButton}
       </View>
 
       <View
@@ -293,6 +299,7 @@ export function MobileBrowserPaneView(props: MobileBrowserPaneViewProps) {
             </View>
           </View>
         ) : null}
+        {feedbackLayer}
       </View>
 
       <View

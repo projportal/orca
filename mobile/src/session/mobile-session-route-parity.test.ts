@@ -171,7 +171,9 @@ const HEAD_RUNTIME_STRING_SHA256 =
   '9b76ff573df10cf370d53f82e4c5864379298fdc3b2c1f607c86bf80c20f2a78'
 // Moved by both of the dock's fields: their refs, and the live one's submit handler, are the seam's now.
 const HEAD_HOST_JSX_SHA256 = 'ac7547dd0e25be2339111ac01ce5e1ec20f00b05bf59dde85664039308cf8593'
-const HEAD_LEAF_JSX_SHA256 = 'c7e1a4b90197697f1eaa640c38da63281b4f7b84fb036ae2152f00c2f7d7cb77'
+// Orca Review fork: re-pinned when the browser pane and file reader gained `feedback={feedback}`
+// (the screenshot/markup/send flow). Upstream's value was c7e1a4b9…d7cb77.
+const HEAD_LEAF_JSX_SHA256 = '0c88de2fd5f4b1c68bd541491e9cd74ffd89fd0996006d8160134c317a35c119'
 const HEAD_STYLE_REFERENCE_SHA256 =
   '295a3501c2c6d7bea7c8bbf38b3f3534f01344cd7e1b91bb8e07c040821d596a'
 const HEAD_IDENTITY_FIELD_SHA256 =

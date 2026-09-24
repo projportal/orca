@@ -1,4 +1,7 @@
+import { useMemo } from 'react'
 import { Animated, View, Text, Pressable, ActivityIndicator } from 'react-native'
+import { MOBILE_FEEDBACK_KIT } from '../feedback/MobileFeedbackHost'
+import type { MobileFeedbackBinding } from '../feedback/mobile-feedback-kit'
 import { saveTerminalTextScale } from '../storage/preferences'
 import { MobileBrowserPane } from '../browser/MobileBrowserPane'
 import { TerminalPaneView } from './TerminalPaneView'
@@ -79,8 +82,19 @@ export function MobileSessionActiveContent({
     keyboardLift,
     activeTerminalKeyboardLift,
     toastAnimatedStyle,
-    createTabBusy
+    createTabBusy,
+    getActiveWorktreeConnectionId
   } = controller
+  const feedback = useMemo<MobileFeedbackBinding>(
+    () => ({
+      kit: MOBILE_FEEDBACK_KIT,
+      client,
+      worktreeId,
+      getConnectionId: getActiveWorktreeConnectionId,
+      onToast: showToast
+    }),
+    [client, getActiveWorktreeConnectionId, showToast, worktreeId]
+  )
   return showLoadingState ? (
     <View style={styles.emptyState}>
       <ActivityIndicator size="small" color={colors.textSecondary} />
@@ -132,6 +146,7 @@ export function MobileSessionActiveContent({
         title={activeFileTab.title || 'File'}
         relativePath={activeFileTab.relativePath}
         language={activeFileTab.language}
+        feedback={feedback}
         diffCommentActions={
           activeFileTab.diffSource === 'staged' || activeFileTab.diffSource === 'unstaged'
             ? {
@@ -163,6 +178,7 @@ export function MobileSessionActiveContent({
         keyboardLift={keyboardLift}
         bottomInset={insets.bottom}
         onToast={showToast}
+        feedback={feedback}
       />
       {toastMessage && (
         <Animated.View pointerEvents="none" style={[styles.toast, toastAnimatedStyle]}>

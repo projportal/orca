@@ -4,19 +4,23 @@ import { WebView } from 'react-native-webview'
 import { Code, Eye } from 'lucide-react-native'
 import { openExternalLink } from '../platform/external-link'
 import { colors, spacing, typography } from '../theme/mobile-theme'
+import { useHtmlPreviewFeedback, type HtmlPreviewFeedback } from './use-html-preview-feedback'
 
 export type MobileHtmlPreviewProps = {
   html: string
   // Rendered when the user flips to "Source" (the existing syntax view).
   renderSource: () => React.ReactNode
+  /** Orca Review: screenshot the rendered page for feedback. Ignored by the page build. */
+  feedback?: HtmlPreviewFeedback
 }
 
 // Renders an agent-produced HTML artifact in a sandboxed WebView, with a
 // Preview/Source toggle. Navigation is locked: only the initial inline document
 // loads in-place; any link tap opens externally so a page can't hijack the
 // review surface.
-export function MobileHtmlPreview({ html, renderSource }: MobileHtmlPreviewProps) {
+export function MobileHtmlPreview({ html, renderSource, feedback }: MobileHtmlPreviewProps) {
   const [mode, setMode] = useState<'preview' | 'source'>('preview')
+  const previewFeedback = useHtmlPreviewFeedback(feedback)
 
   return (
     <View style={styles.container}>
@@ -48,24 +52,38 @@ export function MobileHtmlPreview({ html, renderSource }: MobileHtmlPreviewProps
           <Code size={13} color={colors.textSecondary} strokeWidth={2.2} />
           <Text style={styles.toggleText}>Source</Text>
         </Pressable>
+        {mode === 'preview' && previewFeedback.toolbarButton ? (
+          <View style={styles.toolbarEnd}>{previewFeedback.toolbarButton}</View>
+        ) : null}
       </View>
       {mode === 'preview' ? (
-        <WebView
-          style={styles.webview}
-          originWhitelist={['*']}
-          source={{ html }}
-          javaScriptEnabled
-          // Why: only the initial about:blank inline-HTML load is allowed in
-          // place; a tapped link opens in the system browser instead of
-          // navigating the review WebView away from the artifact.
-          onShouldStartLoadWithRequest={(request) => {
-            if (request.url === 'about:blank' || request.url.startsWith('data:')) {
-              return true
-            }
-            openExternalLink(request.url)
-            return false
-          }}
-        />
+        <View style={styles.previewHost}>
+          {/* The screenshot target: the WebView alone, never the feedback layer beside it. */}
+          <View
+            ref={previewFeedback.viewRef}
+            collapsable={false}
+            style={styles.previewHost}
+            onLayout={(event) => previewFeedback.onLayout(event.nativeEvent.layout)}
+          >
+            <WebView
+              style={styles.webview}
+              originWhitelist={['*']}
+              source={{ html }}
+              javaScriptEnabled
+              // Why: only the initial about:blank inline-HTML load is allowed in
+              // place; a tapped link opens in the system browser instead of
+              // navigating the review WebView away from the artifact.
+              onShouldStartLoadWithRequest={(request) => {
+                if (request.url === 'about:blank' || request.url.startsWith('data:')) {
+                  return true
+                }
+                openExternalLink(request.url)
+                return false
+              }}
+            />
+          </View>
+          {previewFeedback.layer}
+        </View>
       ) : (
         renderSource()
       )}
@@ -98,5 +116,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle
   },
   toggleText: { color: colors.textSecondary, fontSize: typography.metaSize },
+  toolbarEnd: { marginLeft: 'auto', justifyContent: 'center' },
+  previewHost: { flex: 1 },
   webview: { flex: 1, backgroundColor: '#ffffff' }
 })

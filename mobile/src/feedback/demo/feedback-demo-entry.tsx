@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { Settings, StyleSheet, Text, View } from 'react-native'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MobileBrowserPane, type MobileBrowserTab } from '../../browser/MobileBrowserPane'
 import { MobileHtmlPreview } from '../../components/MobileHtmlPreview'
@@ -130,6 +130,27 @@ function DemoHost(props: MobileFeedbackHostProps) {
 
 const DEMO_KIT: MobileFeedbackKit = { ...MOBILE_FEEDBACK_KIT, Host: DemoHost }
 
+/**
+ * Opens the demo from a launch argument, because `simctl openurl` stops on an "Open in …?" prompt
+ * that simctl cannot tap: `xcrun simctl launch <device> com.portalinteractive.orcareview
+ * -orcaReviewFeedbackDemo markup` (iOS puts `-key value` launch arguments in NSUserDefaults).
+ * Mounted by the root layout; the release stub renders nothing.
+ */
+export function FeedbackDemoLaunch(): null {
+  const router = useRouter()
+  useEffect(() => {
+    const step: unknown = Settings.get('orcaReviewFeedbackDemo')
+    if (typeof step !== 'string' || !step) {
+      return
+    }
+    const timer = setTimeout(() => {
+      router.push({ pathname: '/feedback-demo', params: { step } })
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [router])
+  return null
+}
+
 export function FeedbackDemoScreen() {
   const params = useLocalSearchParams<{ step?: string }>()
   const step = parseFeedbackDemoStep(params.step)
@@ -138,7 +159,8 @@ export function FeedbackDemoScreen() {
   const [toast, setToast] = useState<string | null>(null)
   const client = useMemo(
     () =>
-      createFeedbackDemoRpcClient((entry) => setLog((current) => [...current.slice(-2), entry])),
+      // The whole log: one demo run makes a few dozen calls, and the header counts them.
+      createFeedbackDemoRpcClient((entry) => setLog((current) => [...current, entry])),
     []
   )
   const binding = useMemo<MobileFeedbackBinding>(
@@ -163,7 +185,7 @@ export function FeedbackDemoScreen() {
             {log.length > 0
               ? ` · last call: ${log[log.length - 1].method} ${log[log.length - 1].summary}`
               : ''}
-            {uploads > 0 ? ` · ${uploads} upload calls` : ''}
+            {uploads > 0 ? ` · ${uploads} clipboard upload calls` : ''}
           </Text>
         </View>
         {step === 'html' ? (

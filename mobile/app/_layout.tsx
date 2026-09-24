@@ -24,6 +24,7 @@ import { ensureDesktopNotificationChannel } from '../src/notifications/desktop-n
 import { loadHostCatalog } from '../src/transport/host-store'
 import { extractPairingCodeFromUrl } from '../src/transport/pairing'
 import { recoverMobileRelayPairing } from '../src/transport/mobile-relay-pairing-recovery'
+import { FeedbackDemoLaunch } from '../src/feedback/demo/feedback-demo-entry'
 
 // Why: keeps the native splash screen visible until the React tree is mounted
 // and ready to render. Without this the user sees a blank white/black frame
@@ -231,7 +232,10 @@ export default function RootLayout() {
           <Stack.Screen name="connection-log" options={{ headerShown: false }} />
           <Stack.Screen name="about" options={{ headerShown: false }} />
           <Stack.Screen name="h" options={{ headerShown: false }} />
+          <Stack.Screen name="feedback-demo" options={{ headerShown: false }} />
         </Stack>
+        {/* Orca Review: renders nothing outside a feedback-demo build (metro.config.js). */}
+        <FeedbackDemoLaunch />
       </View>
     </RpcClientProvider>
   )

@@ -8,3 +8,8 @@ import { Redirect } from 'expo-router'
 export function FeedbackDemoScreen() {
   return <Redirect href="/" />
 }
+
+/** The demo's launch-argument opener does nothing outside a demo build. */
+export function FeedbackDemoLaunch(): null {
+  return null
+}

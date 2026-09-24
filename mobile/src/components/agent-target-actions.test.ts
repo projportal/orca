@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('lucide-react-native', () => ({ Copy: 'Copy', Plus: 'Plus', Send: 'Send' }))
 
-const { buildAgentTargetActions, agentTargetLabel } = await import('./agent-target-actions')
+const { buildAgentTargetActions, agentTargetLabel, agentTargetLabels } =
+  await import('./agent-target-actions')
 
 describe('agent target actions', () => {
   it('lists each terminal, then New Agent Session, then Copy, wired to their handlers', () => {
@@ -23,8 +24,8 @@ describe('agent target actions', () => {
       onCopy
     })
     expect(actions.map((action) => [action.label, action.skipAutoClose ?? false])).toEqual([
-      ['claude (term-1)', true],
-      ['Terminal (term-2)', true],
+      ['claude (1-abcd)', true],
+      ['Terminal (2)', true],
       ['New Agent Session', true],
       ['Copy Feedback', false]
     ])
@@ -48,5 +49,37 @@ describe('agent target actions', () => {
     })
     expect(actions.map((action) => action.disabled)).toEqual([true, true, false])
     expect(agentTargetLabel({ terminal: 'abcdefgh', title: 'zsh' })).toBe('zsh (abcdef)')
+  })
+
+  it('drops the shared term_ prefix so real handles get a telling suffix', () => {
+    expect(
+      agentTargetLabels([
+        { terminal: 'term_3f9c2a71-0b4e-4c55-9a12-6d0e8f1b2c3d', title: 'claude' },
+        { terminal: 'term_b81d44e0-7a2f-4e19-8c3b-1f5a9d7e6b20', title: 'claude' }
+      ])
+    ).toEqual(['claude (3f9c2a)', 'claude (b81d44)'])
+  })
+
+  it('lengthens the suffix on both rows when two labels would read the same', () => {
+    expect(
+      agentTargetLabels([
+        { terminal: 'term_abcdef11', title: 'claude' },
+        { terminal: 'term_abcdef22', title: 'claude' },
+        { terminal: 'term_abcdef33', title: 'codex' }
+      ])
+    ).toEqual(['claude (abcdef1)', 'claude (abcdef2)', 'codex (abcdef)'])
+    const actions = buildAgentTargetActions({
+      terminals: [
+        { terminal: 'term_abcdef11', title: 'zsh' },
+        { terminal: 'term_abcdef22', title: 'zsh' }
+      ],
+      sendDisabled: false,
+      copyLabel: 'Copy',
+      copyDisabled: false,
+      onSendToTerminal: () => {},
+      onNewSession: () => {},
+      onCopy: () => {}
+    })
+    expect(new Set(actions.map((action) => action.label)).size).toBe(actions.length)
   })
 })

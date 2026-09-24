@@ -17,6 +17,20 @@ export type DemoRpcLogEntry = { method: string; summary: string }
 
 const META = { runtimeId: 'feedback-demo' }
 
+/** Two agent sessions with distinct titles and handles shaped like the desktop's `term_<uuid>`. */
+export const FEEDBACK_DEMO_TERMINALS = [
+  {
+    title: 'Claude · pricing CTA',
+    terminal: 'term_3f9c2a71-0b4e-4c55-9a12-6d0e8f1b2c3d',
+    agent: 'claude'
+  },
+  {
+    title: 'Codex · onboarding',
+    terminal: 'term_b81d44e0-7a2f-4e19-8c3b-1f5a9d7e6b20',
+    agent: 'codex'
+  }
+] as const
+
 /**
  * A stand-in desktop for the Orca Review feedback demo route, in-process: it streams one sample
  * screencast frame as binary and answers the calls the feedback flow makes (the chunked clipboard
@@ -55,16 +69,16 @@ export function createFeedbackDemoRpcClient(log: (entry: DemoRpcLogEntry) => voi
             {
               type: 'terminal',
               id: 'demo-tab-1',
-              title: 'claude',
-              terminal: 'term-demo-1',
-              launchAgent: 'claude'
+              title: FEEDBACK_DEMO_TERMINALS[0].title,
+              terminal: FEEDBACK_DEMO_TERMINALS[0].terminal,
+              launchAgent: FEEDBACK_DEMO_TERMINALS[0].agent
             },
             {
               type: 'terminal',
               id: 'demo-tab-2',
-              title: 'codex',
-              terminal: 'term-demo-2',
-              launchAgent: 'codex'
+              title: FEEDBACK_DEMO_TERMINALS[1].title,
+              terminal: FEEDBACK_DEMO_TERMINALS[1].terminal,
+              launchAgent: FEEDBACK_DEMO_TERMINALS[1].agent
             }
           ]
         })
@@ -75,7 +89,7 @@ export function createFeedbackDemoRpcClient(log: (entry: DemoRpcLogEntry) => voi
             type: 'terminal',
             id: `demo-new-${terminals}`,
             title: 'claude',
-            terminal: `term-new-${terminals}`,
+            terminal: `term_0c7e5d${terminals}0-new-session`,
             launchAgent: 'claude'
           }
         })

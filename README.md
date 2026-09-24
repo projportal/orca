@@ -26,6 +26,24 @@
   <img src="docs/assets/readme-hero.jpg" alt="Orca desktop app running agents in parallel worktrees, with the Orca mobile companion app in the corner" width="960" />
 </p>
 
+## Orca Review fork
+
+This repository (`projportal/orca`) is a fork of [stablyai/orca](https://github.com/stablyai/orca). It builds **Orca Review**, a personal iPhone-only variant of the Orca mobile companion, used to review agent work from a phone. It is not an official Orca release and is not affiliated with or endorsed by Stably / Lovecast Inc. The desktop app stays the unmodified upstream Orca.
+
+What changed (all in `mobile/`), and why:
+
+| Change | Why |
+|---|---|
+| App name "Orca Review", slug `orca-review`, bundle id `com.portalinteractive.orcareview`, version 0.1.0 (build 1) | Installs beside, and never collides with, the official Orca app; own App Store Connect record |
+| Android removed (app config, `google-services.json`, rotation-lock plugin, Android release script and workflow); iPhone only (no iPad) | Only an iPhone is used; less to build and maintain |
+| Push notifications off: no `aps-environment` entitlement, no APNs; the notification code stays | Pairing is over LAN and Tailscale only; there is no push gateway for the fork |
+| Fastlane: new bundle id, team, `OrcaReview` scheme; internal TestFlight group only | Builds go to internal testers only, never external or the App Store |
+| Protocol "update the app" link points to this README instead of the App Store listing | The fork is not on the App Store |
+
+Kept on purpose: the `orca://` URL scheme (so the desktop's pairing QR links still open this app; do not install the official Orca app on the same phone), the RPC protocol constants (so it pairs with unmodified Orca desktop), and the MIT license and copyright notice.
+
+Trademark note: the fork still uses the upstream Orca icons for now. "Orca" and its icon belong to their owners; replace the icons before any wider distribution.
+
 ## Features
 
 <table>

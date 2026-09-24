@@ -30,7 +30,7 @@ export type MobileFeedbackHostProps = {
   captureRequest: number
   source: MobileFeedbackCaptureSource
   getPageContext: () => MobileFeedbackPageContext
-  /** True while markup holds the viewport, so the pane stops forwarding touches to the page. */
+  /** True while markup holds the viewport: the pane stops forwarding touches and hides its keys. */
   onViewportHeldChange: (held: boolean) => void
   onToast: (message: string, durationMs?: number) => void
 }

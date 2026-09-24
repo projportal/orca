@@ -56,6 +56,8 @@ type MobileBrowserPaneViewProps = {
   goForward: () => void
   keyboardLift: number
   keyboardValue: string
+  /** Markup has the viewport: the key strip and text field step aside so the canvas gets the room. */
+  pageKeysHidden?: boolean
   layoutRef: RefObject<BrowserTouchLayout | null>
   navigateToAddress: () => Promise<void>
   panResponder: PanResponderInstance
@@ -105,6 +107,7 @@ export function MobileBrowserPaneView(props: MobileBrowserPaneViewProps) {
     keyboardLift,
     keyboardValue,
     layoutRef,
+    pageKeysHidden,
     navigateToAddress,
     panResponder,
     pointerModifiers,
@@ -302,43 +305,47 @@ export function MobileBrowserPaneView(props: MobileBrowserPaneViewProps) {
         {feedbackLayer}
       </View>
 
-      <View
-        style={[
-          styles.keyboardDock,
-          { paddingBottom: bottomInset, transform: [{ translateY: -keyboardLift }] }
-        ]}
-      >
-        <MobileBrowserPointerModifiers
-          disabled={controlsDisabled}
-          selectedModifiers={pointerModifiers}
-          onToggle={togglePointerModifier}
-        />
-        <MobileBrowserKeyRow
-          disabled={controlsDisabled}
-          onKeypress={(key) => void sendKeypress(key)}
-        />
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.keyboardInput}
-            value={keyboardValue}
-            onChangeText={setKeyboardValue}
-            placeholder="Type on page…"
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!controlsDisabled}
-            onSubmitEditing={() => void sendKeyboardText()}
+      {pageKeysHidden ? (
+        <View style={[styles.keyboardDockHidden, { height: bottomInset }]} />
+      ) : (
+        <View
+          style={[
+            styles.keyboardDock,
+            { paddingBottom: bottomInset, transform: [{ translateY: -keyboardLift }] }
+          ]}
+        >
+          <MobileBrowserPointerModifiers
+            disabled={controlsDisabled}
+            selectedModifiers={pointerModifiers}
+            onToggle={togglePointerModifier}
           />
-          <Pressable
-            style={[styles.sendButton, (controlsDisabled || !keyboardValue) && styles.disabled]}
-            disabled={controlsDisabled || !keyboardValue}
-            onPress={() => void sendKeyboardText()}
-            accessibilityLabel="Send text to browser"
-          >
-            <ArrowUp size={18} color={buttonColor(!controlsDisabled && !!keyboardValue)} />
-          </Pressable>
+          <MobileBrowserKeyRow
+            disabled={controlsDisabled}
+            onKeypress={(key) => void sendKeypress(key)}
+          />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.keyboardInput}
+              value={keyboardValue}
+              onChangeText={setKeyboardValue}
+              placeholder="Type on page…"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!controlsDisabled}
+              onSubmitEditing={() => void sendKeyboardText()}
+            />
+            <Pressable
+              style={[styles.sendButton, (controlsDisabled || !keyboardValue) && styles.disabled]}
+              disabled={controlsDisabled || !keyboardValue}
+              onPress={() => void sendKeyboardText()}
+              accessibilityLabel="Send text to browser"
+            >
+              <ArrowUp size={18} color={buttonColor(!controlsDisabled && !!keyboardValue)} />
+            </Pressable>
+          </View>
         </View>
-      </View>
+      )}
     </View>
   )
 }

@@ -137,6 +137,7 @@ export function feedbackFlowReducer(
   }
 }
 
+/** Markup holds the viewport: the pane stops forwarding touches and hides its page key strip. */
 export function feedbackFlowHoldsViewport(state: FeedbackFlowState): boolean {
   return state.kind === 'markup'
 }

@@ -348,6 +348,7 @@ export function MobileBrowserPane({
       keyboardLift={keyboardLift}
       keyboardValue={keyboardValue}
       layoutRef={layoutRef}
+      pageKeysHidden={paneFeedback.pageKeysHidden}
       navigateToAddress={navigateToAddress}
       panResponder={panResponder}
       pointerModifiers={pointerModifiers}

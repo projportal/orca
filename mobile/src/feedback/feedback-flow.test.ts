@@ -107,6 +107,29 @@ describe('feedback flow', () => {
     })
   })
 
+  it('hides the page key strip only while markup is open, through every way in and out', () => {
+    const image = { uri: 'file:///c/flat.png', width: 1206, height: 2148, markedUp: true }
+    const steps: [FeedbackFlowAction, boolean][] = [
+      [{ type: 'capture-started' }, false],
+      [{ type: 'captured', capture: CAPTURE }, false],
+      [{ type: 'open-markup' }, true],
+      [{ type: 'cancel-markup' }, false],
+      [{ type: 'open-markup' }, true],
+      [{ type: 'markup-done', image, markup: null }, false],
+      [{ type: 'set-comment', comment: 'wrap the price' }, false],
+      [{ type: 'edit-markup' }, true],
+      [{ type: 'markup-done', image, markup: null }, false],
+      [{ type: 'edit-markup' }, true],
+      [{ type: 'dismiss' }, false]
+    ]
+    let state = FEEDBACK_IDLE
+    expect(feedbackFlowHoldsViewport(state)).toBe(false)
+    for (const [action, hidden] of steps) {
+      state = feedbackFlowReducer(state, action)
+      expect(feedbackFlowHoldsViewport(state), `${action.type} -> ${state.kind}`).toBe(hidden)
+    }
+  })
+
   it('does not reopen markup while a send is in flight', () => {
     const composing = run([
       { type: 'capture-started' },

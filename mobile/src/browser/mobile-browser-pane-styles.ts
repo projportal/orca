@@ -146,6 +146,7 @@ export const mobileBrowserPaneStyles = StyleSheet.create({
     borderTopColor: colors.borderSubtle,
     backgroundColor: colors.bgPanel
   },
+  keyboardDockHidden: { backgroundColor: colors.bgBase },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',

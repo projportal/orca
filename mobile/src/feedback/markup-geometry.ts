@@ -129,6 +129,66 @@ export function cropRectToPixels(
   return { originX, originY, width, height }
 }
 
+/** Crop corner handles: drawn this big, grabbed within a square this big (both in points). */
+export const MARKUP_CROP_HANDLE_POINTS = 24
+export const MARKUP_CROP_HANDLE_HIT_POINTS = 44
+
+export type CropCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+export const CROP_CORNERS: readonly CropCorner[] = [
+  'top-left',
+  'top-right',
+  'bottom-left',
+  'bottom-right'
+]
+
+export function cropCornerPoints(crop: MarkupRect): Record<CropCorner, MarkupPoint> {
+  const right = crop.x + crop.width
+  const bottom = crop.y + crop.height
+  return {
+    'top-left': { x: crop.x, y: crop.y },
+    'top-right': { x: right, y: crop.y },
+    'bottom-left': { x: crop.x, y: bottom },
+    'bottom-right': { x: right, y: bottom }
+  }
+}
+
+const OPPOSITE: Record<CropCorner, CropCorner> = {
+  'top-left': 'bottom-right',
+  'top-right': 'bottom-left',
+  'bottom-left': 'top-right',
+  'bottom-right': 'top-left'
+}
+
+/** The corner a touch (image pixels) grabs, nearest first, or null outside every handle's hit square. */
+export function cropCornerAt(
+  point: MarkupPoint,
+  crop: MarkupRect,
+  fit: Pick<MarkupFit, 'scale'>,
+  hitPoints: number = MARKUP_CROP_HANDLE_HIT_POINTS
+): CropCorner | null {
+  const reach = hitPoints / 2 / fit.scale
+  const corners = cropCornerPoints(crop)
+  let best: { corner: CropCorner; distance: number } | null = null
+  for (const corner of CROP_CORNERS) {
+    const at = corners[corner]
+    const dx = Math.abs(point.x - at.x)
+    const dy = Math.abs(point.y - at.y)
+    if (dx > reach || dy > reach) {
+      continue
+    }
+    const distance = Math.hypot(dx, dy)
+    if (!best || distance < best.distance) {
+      best = { corner, distance }
+    }
+  }
+  return best?.corner ?? null
+}
+
+/** Where a corner drag is anchored: the corner diagonally across, which stays put. */
+export function oppositeCropCorner(crop: MarkupRect, corner: CropCorner): MarkupPoint {
+  return cropCornerPoints(crop)[OPPOSITE[corner]]
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }

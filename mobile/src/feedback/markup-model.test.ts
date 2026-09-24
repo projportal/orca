@@ -5,13 +5,18 @@ import {
   canvasToImagePoint,
   clampRect,
   computeContainFit,
+  cropCornerAt,
   cropRectToPixels,
+  MARKUP_CROP_HANDLE_HIT_POINTS,
+  MARKUP_CROP_HANDLE_POINTS,
+  oppositeCropCorner,
   flattenCaptureSize,
   normalizeRect,
   pointsToImagePixels,
   polylinePathData
 } from './markup-geometry'
 import { shouldForwardBrowserTouch } from './markup-input-gate'
+import { markupToolHint } from './markup-tool-hint'
 import {
   canUndoMarkup,
   createMarkupState,
@@ -223,5 +228,59 @@ describe('input gating', () => {
     expect(shouldForwardBrowserTouch({ dialogOpen: false, markupArmed: false })).toBe(true)
     expect(shouldForwardBrowserTouch({ dialogOpen: false, markupArmed: true })).toBe(false)
     expect(shouldForwardBrowserTouch({ dialogOpen: true, markupArmed: false })).toBe(false)
+  })
+})
+
+describe('crop corner handles', () => {
+  const crop = { x: 100, y: 200, width: 600, height: 400 }
+  // 3 image pixels per point: a 44 pt hit square reaches 66 px either side of a corner.
+  const fit = { scale: 1 / 3 }
+
+  it('grabs the nearest corner inside its 44 pt hit square and nothing outside', () => {
+    expect(cropCornerAt({ x: 110, y: 190 }, crop, fit)).toBe('top-left')
+    expect(cropCornerAt({ x: 760, y: 610 }, crop, fit)).toBe('bottom-right')
+    expect(cropCornerAt({ x: 700 - 66, y: 200 + 66 }, crop, fit)).toBe('top-right')
+    expect(cropCornerAt({ x: 100 + 67, y: 200 }, crop, fit)).toBeNull()
+    expect(cropCornerAt({ x: 400, y: 400 }, crop, fit)).toBeNull()
+    expect(MARKUP_CROP_HANDLE_POINTS).toBe(24)
+    expect(MARKUP_CROP_HANDLE_HIT_POINTS).toBe(44)
+    expect(oppositeCropCorner(crop, 'top-left')).toEqual({ x: 700, y: 600 })
+    expect(oppositeCropCorner(crop, 'bottom-left')).toEqual({ x: 700, y: 200 })
+  })
+
+  it('resizes from a corner, anchored on the opposite one, and undoes to the old crop', () => {
+    const cropped = run([
+      { type: 'set-tool', tool: 'crop' },
+      { type: 'begin', point: { x: 100, y: 200 }, strokeWidth: 3 },
+      { type: 'extend', point: { x: 700, y: 600 } },
+      { type: 'end', minSize: 12 }
+    ])
+    expect(cropped.crop).toEqual(crop)
+    const resized = run(
+      [
+        { type: 'begin-crop-resize', anchor: { x: 100, y: 200 }, point: { x: 700, y: 600 } },
+        { type: 'extend', point: { x: 500, y: 450 } },
+        { type: 'end', minSize: 12 }
+      ],
+      cropped
+    )
+    expect(resized.crop).toEqual({ x: 100, y: 200, width: 400, height: 250 })
+    expect(run([{ type: 'undo' }], resized).crop).toEqual(crop)
+  })
+
+  it('ignores a corner grab with no crop or outside the crop tool', () => {
+    const action: MarkupAction = {
+      type: 'begin-crop-resize',
+      anchor: { x: 0, y: 0 },
+      point: { x: 10, y: 10 }
+    }
+    const idle = createMarkupState()
+    expect(markupReducer(idle, action)).toBe(idle)
+  })
+
+  it('words the crop hint for the gesture that is live', () => {
+    expect(markupToolHint('crop', false)).toBe('Drag to select the area')
+    expect(markupToolHint('crop', true)).toBe('Drag a corner to resize')
+    expect(markupToolHint('pen', false)).toBe('Draw freehand')
   })
 })

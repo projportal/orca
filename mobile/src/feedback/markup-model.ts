@@ -63,6 +63,8 @@ export type MarkupAction =
   | { type: 'set-tool'; tool: MarkupTool }
   | { type: 'set-color'; color: string }
   | { type: 'begin'; point: MarkupPoint; strokeWidth: number }
+  /** A corner handle grabbed: the crop is redrawn from the fixed opposite corner to the finger. */
+  | { type: 'begin-crop-resize'; anchor: MarkupPoint; point: MarkupPoint }
   | { type: 'extend'; point: MarkupPoint }
   | { type: 'end'; minSize: number }
   | { type: 'cancel-draft' }
@@ -91,6 +93,10 @@ export function markupReducer(state: MarkupState, action: MarkupAction): MarkupS
       return { ...state, color: action.color }
     case 'begin':
       return { ...state, draft: beginDraft(state, action.point, action.strokeWidth) }
+    case 'begin-crop-resize':
+      return state.tool === 'crop' && state.crop
+        ? { ...state, draft: { kind: 'crop', from: action.anchor, to: action.point } }
+        : state
     case 'extend':
       return state.draft ? { ...state, draft: extendDraft(state.draft, action.point) } : state
     case 'end':

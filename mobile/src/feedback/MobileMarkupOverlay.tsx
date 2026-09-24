@@ -12,11 +12,16 @@ import {
 } from './feedback-platform'
 import { flattenMarkup, type FeedbackComposedImage } from './markup-flatten'
 import {
+  CROP_CORNERS,
+  MARKUP_CROP_HANDLE_POINTS,
   MARKUP_MIN_SHAPE_POINTS,
   MARKUP_STROKE_POINTS,
   MARKUP_TEXT_POINTS,
   canvasToImagePoint,
   computeContainFit,
+  cropCornerAt,
+  cropCornerPoints,
+  oppositeCropCorner,
   normalizeRect,
   pointsToImagePixels,
   type MarkupFit,
@@ -37,7 +42,8 @@ import { MobileMarkupToolbar } from './MobileMarkupToolbar'
 type Props = {
   capture: FeedbackCapture
   onCancel: () => void
-  onDone: (image: FeedbackComposedImage) => void
+  /** The flattened image, and the drawing that made it (kept so "Edit markup" can reopen it). */
+  onDone: (image: FeedbackComposedImage, markup: MarkupState) => void
   onError: (message: string) => void
   /** Seeds the drawing (the demo route shows a drawn arrow and box without touch input). */
   initialState?: MarkupState
@@ -88,8 +94,14 @@ export function MobileMarkupOverlay({
         if (!point || !current) {
           return
         }
-        if (stateRef.current.tool === 'text') {
+        const { tool, crop } = stateRef.current
+        if (tool === 'text') {
           setTextAt(point)
+          return
+        }
+        const corner = tool === 'crop' && crop ? cropCornerAt(point, crop, current) : null
+        if (crop && corner) {
+          dispatch({ type: 'begin-crop-resize', anchor: oppositeCropCorner(crop, corner), point })
           return
         }
         dispatch({
@@ -118,13 +130,14 @@ export function MobileMarkupOverlay({
   const finish = async () => {
     setBusy(true)
     try {
-      const result = await flattenMarkup(capture, stateRef.current, {
+      const markup = { ...stateRef.current, draft: null }
+      const result = await flattenMarkup(capture, markup, {
         captureCanvas: (size) => captureFeedbackView(canvasRef, size),
         pixelRatio: feedbackPixelRatio(),
         store: feedbackCaptureStore,
         crop: cropFeedbackImage
       })
-      onDone(result)
+      onDone(result, markup)
     } catch (error) {
       setBusy(false)
       onError(error instanceof Error ? error.message : 'Could not save the markup')
@@ -196,7 +209,9 @@ export function MobileMarkupOverlay({
                 {draft ? <MobileMarkupShape shape={draft} /> : null}
               </Svg>
             </View>
-            {cropShown ? <CropShade fit={fit} crop={cropShown} image={image} /> : null}
+            {cropShown ? (
+              <CropShade fit={fit} crop={cropShown} image={image} handles={state.tool === 'crop'} />
+            ) : null}
             <View
               style={[
                 styles.canvas,
@@ -232,7 +247,19 @@ export function MobileMarkupOverlay({
 }
 
 /** Shades everything outside the crop; drawn beside the canvas so the snapshot never has it. */
-function CropShade({ fit, crop, image }: { fit: MarkupFit; crop: MarkupRect; image: MarkupSize }) {
+function CropShade({
+  fit,
+  crop,
+  image,
+  handles
+}: {
+  fit: MarkupFit
+  crop: MarkupRect
+  image: MarkupSize
+  handles: boolean
+}) {
+  const corners = cropCornerPoints(crop)
+  const half = MARKUP_CROP_HANDLE_POINTS / 2
   const x = fit.x + crop.x * fit.scale
   const y = fit.y + crop.y * fit.scale
   const width = crop.width * fit.scale
@@ -253,6 +280,20 @@ function CropShade({ fit, crop, image }: { fit: MarkupFit; crop: MarkupRect; ima
       <View style={[styles.shade, { left: fit.x, top: y, width: x - fit.x, height }]} />
       <View style={[styles.shade, { left: x + width, top: y, width: right - x - width, height }]} />
       <View style={[styles.cropFrame, { left: x, top: y, width, height }]} />
+      {handles
+        ? CROP_CORNERS.map((corner) => (
+            <View
+              key={corner}
+              style={[
+                styles.cropHandle,
+                {
+                  left: fit.x + corners[corner].x * fit.scale - half,
+                  top: fit.y + corners[corner].y * fit.scale - half
+                }
+              ]}
+            />
+          ))
+        : null}
     </View>
   )
 }
@@ -268,5 +309,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#ffffff',
     borderStyle: 'dashed'
+  },
+  cropHandle: {
+    position: 'absolute',
+    width: MARKUP_CROP_HANDLE_POINTS,
+    height: MARKUP_CROP_HANDLE_POINTS,
+    borderRadius: 6,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: colors.bgBase
   }
 })

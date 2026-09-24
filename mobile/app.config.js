@@ -10,11 +10,29 @@
 //
 // app.json stays the source for everything else: Expo reads it first and hands it
 // to this function, so the fastlane version/buildNumber rewrite still flows through.
-const { withEntitlementsPlist } = require('expo/config-plugins')
+const { withEntitlementsPlist, withXcodeProject } = require('expo/config-plugins')
 
 const withoutApsEnvironment = (config) =>
   withEntitlementsPlist(config, (modConfig) => {
     delete modConfig.modResults['aps-environment']
+    return modConfig
+  })
+
+// Prebuild writes ios.buildNumber into Info.plist only; keep the app target's
+// CURRENT_PROJECT_VERSION equal to it so Xcode shows the same build.
+const withBuildNumberInProject = (config) =>
+  withXcodeProject(config, (modConfig) => {
+    const buildNumber = modConfig.ios?.buildNumber
+    if (!buildNumber) {
+      return modConfig
+    }
+    const configurations = modConfig.modResults.pbxXCBuildConfigurationSection()
+    for (const entry of Object.values(configurations)) {
+      const settings = typeof entry === 'object' ? entry.buildSettings : undefined
+      if (settings?.PRODUCT_BUNDLE_IDENTIFIER && 'CURRENT_PROJECT_VERSION' in settings) {
+        settings.CURRENT_PROJECT_VERSION = buildNumber
+      }
+    }
     return modConfig
   })
 
@@ -28,6 +46,7 @@ module.exports = ({ config }) => {
     // stripper must be registered first to run after expo-notifications adds the entitlement.
     plugins: [
       withoutApsEnvironment,
+      withBuildNumberInProject,
       ...(config.plugins ?? []).map((plugin) =>
         plugin === 'expo-notifications'
           ? ['expo-notifications', { icon: './assets/notification-icon.png' }]

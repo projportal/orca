@@ -8,6 +8,8 @@ import {
   type FeedbackFlowAction,
   type FeedbackFlowState
 } from './feedback-flow'
+import { feedbackComposerDetailRows } from './feedback-message'
+import { createMarkupState, markupReducer } from './markup-model'
 import {
   createFeedbackList,
   feedbackCommentPreview,
@@ -43,7 +45,7 @@ describe('feedback flow', () => {
 
     state = run(
       [
-        { type: 'markup-done', image },
+        { type: 'markup-done', image, markup: null },
         { type: 'set-comment', comment: 'x'.repeat(4100) },
         { type: 'set-intent', intent: 'question' }
       ],
@@ -70,6 +72,66 @@ describe('feedback flow', () => {
       kind: 'composing',
       composer: { image: { uri: CAPTURE.uri, markedUp: false } }
     })
+  })
+
+  it('reopens markup from the composer with the drawing, keeping the comment', () => {
+    const drawing = markupReducer(createMarkupState(), { type: 'set-color', color: '#34c759' })
+    const first = { uri: 'file:///c/crop-1.png', width: 1110, height: 860, markedUp: true }
+    let state = run([
+      { type: 'capture-started' },
+      { type: 'captured', capture: CAPTURE },
+      { type: 'open-markup' },
+      { type: 'markup-done', image: first, markup: drawing },
+      { type: 'set-comment', comment: 'move the CTA' },
+      { type: 'set-intent', intent: 'question' },
+      { type: 'edit-markup' }
+    ])
+    expect(state).toMatchObject({ kind: 'markup', seed: drawing })
+    expect(feedbackFlowHoldsViewport(state)).toBe(true)
+
+    // Cancel drops only this round: the composer comes back as it was.
+    const cancelled = feedbackFlowReducer(state, { type: 'cancel-markup' })
+    expect(cancelled).toMatchObject({
+      kind: 'composing',
+      composer: { image: first, comment: 'move the CTA', intent: 'question' }
+    })
+
+    const second = { uri: 'file:///c/crop-2.png', width: 900, height: 700, markedUp: true }
+    state = run(
+      [{ type: 'edit-markup' }, { type: 'markup-done', image: second, markup: drawing }],
+      cancelled
+    )
+    expect(state).toMatchObject({
+      kind: 'composing',
+      composer: { image: second, markup: drawing, comment: 'move the CTA', intent: 'question' }
+    })
+  })
+
+  it('does not reopen markup while a send is in flight', () => {
+    const composing = run([
+      { type: 'capture-started' },
+      { type: 'captured', capture: CAPTURE },
+      { type: 'skip-markup' },
+      { type: 'send-started' }
+    ])
+    expect(feedbackFlowReducer(composing, { type: 'edit-markup' })).toBe(composing)
+  })
+
+  it('lists the image first under Details, then the header fields', () => {
+    const rows = feedbackComposerDetailRows(
+      { width: 1110, height: 860, markedUp: true },
+      {
+        pageUrl: 'http://localhost:5173/pricing',
+        browserTabId: 'page-7',
+        viewport: { width: 402, height: 560 },
+        viewMode: 'mobile',
+        deviceModel: 'iPhone 17 Pro',
+        os: 'iOS 26.3',
+        appVersion: 'Orca Review 0.1.0 (1)'
+      }
+    )
+    expect(rows[0]).toEqual(['Image', '1110x860 px · marked up'])
+    expect(rows.map(([name]) => name)).toContain('URL')
   })
 
   it('ignores actions that do not belong to the current step', () => {

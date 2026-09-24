@@ -35,6 +35,7 @@ import {
   buildFeedbackClipboardText,
   createFeedbackTerminal,
   deliverFeedbackToTerminal,
+  feedbackSendDepsFor,
   listFeedbackTerminals,
   uploadFeedbackImage,
   type FeedbackTerminalTarget
@@ -143,12 +144,12 @@ export function useMobileFeedbackFlow(args: Args) {
     if (!client) {
       throw new Error('Waiting for desktop...')
     }
-    return {
+    return feedbackSendDepsFor(composer, {
       client,
-      readImageBase64: () => readFeedbackImageBase64(composer.image.uri),
+      readImageBase64: readFeedbackImageBase64,
       connectionId: await argsRef.current.getConnectionId(),
       sleep: argsRef.current.sleep ?? realSleep
-    }
+    })
   }, [])
 
   const recordAttempt = useCallback((composer: FeedbackComposer) => {
@@ -157,7 +158,8 @@ export function useMobileFeedbackFlow(args: Args) {
       id: composer.capture.id,
       createdAt: composer.capture.createdAt,
       updatedAt: now,
-      thumbnailUri: composer.capture.thumbnailUri,
+      // The list shows what was sent: the marked-up, cropped image when there is one.
+      thumbnailUri: composer.image.markedUp ? composer.image.uri : composer.capture.thumbnailUri,
       pageLabel: feedbackPageHeading(argsRef.current.getPageContext().pageUrl),
       intent: composer.intent,
       commentPreview: feedbackCommentPreview(composer.comment),

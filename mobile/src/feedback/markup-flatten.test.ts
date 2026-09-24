@@ -1,6 +1,13 @@
 import { Buffer } from 'buffer'
 import { describe, expect, it, vi } from 'vitest'
 import type { FeedbackCapture } from './feedback-capture'
+import {
+  FEEDBACK_IDLE,
+  feedbackComposerImageUri,
+  feedbackFlowReducer,
+  type FeedbackFlowAction
+} from './feedback-flow'
+import { feedbackSendDepsFor, type FeedbackRpcSender } from './feedback-send'
 import { flattenMarkup, scaleCrop, type MarkupFlattenDeps } from './markup-flatten'
 import { createMarkupState, markupReducer, type MarkupState } from './markup-model'
 
@@ -65,6 +72,45 @@ function withArrowAndCrop(crop: boolean): MarkupState {
   }
   return state
 }
+
+/** The deps under test only read the image; no request is ever made. */
+const UNUSED_CLIENT: FeedbackRpcSender = {
+  sendRequest: async () => {
+    throw new Error('no request expected')
+  }
+}
+
+describe('crop continuity: markup → composer → send', () => {
+  it('previews and uploads the flattened, cropped file, never the raw capture', async () => {
+    const { value } = deps()
+    const markup = withArrowAndCrop(true)
+    const image = await flattenMarkup(CAPTURE, markup, value)
+    const actions: FeedbackFlowAction[] = [
+      { type: 'capture-started' },
+      { type: 'captured', capture: CAPTURE },
+      { type: 'open-markup' },
+      { type: 'markup-done', image, markup }
+    ]
+    const state = actions.reduce(feedbackFlowReducer, FEEDBACK_IDLE)
+    if (state.kind !== 'composing') {
+      throw new Error(`expected composing, got ${state.kind}`)
+    }
+    const cropped = 'file:///c/fb-1-aaaaaa-crop.png'
+    expect(feedbackComposerImageUri(state.composer)).toBe(cropped)
+    expect(state.composer.image).toMatchObject({ width: 800, height: 1200 })
+
+    const readImageBase64 = vi.fn(async (_uri: string) => 'AAAA')
+    const sendDeps = feedbackSendDepsFor(state.composer, {
+      client: UNUSED_CLIENT,
+      readImageBase64,
+      connectionId: null,
+      sleep: async () => {}
+    })
+    await sendDeps.readImageBase64()
+    expect(readImageBase64).toHaveBeenCalledWith(cropped)
+    expect(readImageBase64).not.toHaveBeenCalledWith(CAPTURE.uri)
+  })
+})
 
 describe('flatten', () => {
   it('sends the untouched capture when nothing was drawn', async () => {

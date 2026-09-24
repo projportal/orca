@@ -2,6 +2,7 @@ import type { FeedbackCapture } from './feedback-capture'
 import { clampFeedbackComment, type FeedbackIntent } from './feedback-message'
 import type { MobileReviewTerminalTab } from '../session/review-terminal-reply-schema'
 import type { FeedbackComposedImage } from './markup-flatten'
+import type { MarkupState } from './markup-model'
 
 export type { FeedbackComposedImage }
 
@@ -12,7 +13,10 @@ export type FeedbackTargetPicker =
 
 export type FeedbackComposer = {
   capture: FeedbackCapture
+  /** The flattened, cropped output of markup (or the untouched capture): previewed and sent. */
   image: FeedbackComposedImage
+  /** The drawing that made `image`, so "Edit markup" reopens it; null when markup was skipped. */
+  markup: MarkupState | null
   comment: string
   intent: FeedbackIntent
   picker: FeedbackTargetPicker | null
@@ -22,13 +26,19 @@ export type FeedbackComposer = {
 
 /**
  * Screenshot → thumbnail → markup → composer → delivered. Markup is the only state that holds the
- * viewport, which is what `feedbackFlowHoldsViewport` answers for the pane's touch gate.
+ * viewport, which is what `feedbackFlowHoldsViewport` answers for the pane's touch gate. Markup
+ * reopened from the composer keeps that composer in `returnTo`, so Cancel goes back to it.
  */
 export type FeedbackFlowState =
   | { kind: 'idle' }
   | { kind: 'capturing' }
   | { kind: 'captured'; capture: FeedbackCapture }
-  | { kind: 'markup'; capture: FeedbackCapture }
+  | {
+      kind: 'markup'
+      capture: FeedbackCapture
+      seed: MarkupState | null
+      returnTo: FeedbackComposer | null
+    }
   | { kind: 'composing'; composer: FeedbackComposer }
   | { kind: 'delivered'; itemId: string; capture: FeedbackCapture }
 
@@ -37,8 +47,9 @@ export type FeedbackFlowAction =
   | { type: 'capture-failed' }
   | { type: 'captured'; capture: FeedbackCapture }
   | { type: 'open-markup' }
+  | { type: 'edit-markup' }
   | { type: 'cancel-markup' }
-  | { type: 'markup-done'; image: FeedbackComposedImage }
+  | { type: 'markup-done'; image: FeedbackComposedImage; markup: MarkupState | null }
   | { type: 'skip-markup' }
   | { type: 'set-comment'; comment: string }
   | { type: 'set-intent'; intent: FeedbackIntent }
@@ -64,19 +75,48 @@ export function feedbackFlowReducer(
     case 'captured':
       return state.kind === 'capturing' ? { kind: 'captured', capture: action.capture } : state
     case 'open-markup':
-      return state.kind === 'captured' ? { kind: 'markup', capture: state.capture } : state
+      return state.kind === 'captured'
+        ? { kind: 'markup', capture: state.capture, seed: null, returnTo: null }
+        : state
+    case 'edit-markup':
+      return state.kind === 'composing' && !state.composer.sending
+        ? {
+            kind: 'markup',
+            capture: state.composer.capture,
+            seed: state.composer.markup,
+            returnTo: { ...state.composer, picker: null, error: null }
+          }
+        : state
     case 'cancel-markup':
-      return state.kind === 'markup' ? { kind: 'captured', capture: state.capture } : state
+      if (state.kind !== 'markup') {
+        return state
+      }
+      // Cancel drops this round of edits: back to the composer it came from, else the thumbnail.
+      return state.returnTo
+        ? { kind: 'composing', composer: state.returnTo }
+        : { kind: 'captured', capture: state.capture }
     case 'markup-done':
-      return state.kind === 'markup' ? composing(state.capture, action.image) : state
+      if (state.kind !== 'markup') {
+        return state
+      }
+      return state.returnTo
+        ? {
+            kind: 'composing',
+            composer: { ...state.returnTo, image: action.image, markup: action.markup }
+          }
+        : composing(state.capture, action.image, action.markup)
     case 'skip-markup':
       return state.kind === 'captured'
-        ? composing(state.capture, {
-            uri: state.capture.uri,
-            width: state.capture.width,
-            height: state.capture.height,
-            markedUp: false
-          })
+        ? composing(
+            state.capture,
+            {
+              uri: state.capture.uri,
+              width: state.capture.width,
+              height: state.capture.height,
+              markedUp: false
+            },
+            null
+          )
         : state
     case 'set-comment':
       return patchComposer(state, { comment: clampFeedbackComment(action.comment) })
@@ -116,12 +156,22 @@ export function feedbackFlowCaptureIds(state: FeedbackFlowState): string[] {
   }
 }
 
-function composing(capture: FeedbackCapture, image: FeedbackComposedImage): FeedbackFlowState {
+/** The file the composer previews and the send uploads: always the composed (flattened) image. */
+export function feedbackComposerImageUri(composer: Pick<FeedbackComposer, 'image'>): string {
+  return composer.image.uri
+}
+
+function composing(
+  capture: FeedbackCapture,
+  image: FeedbackComposedImage,
+  markup: MarkupState | null
+): FeedbackFlowState {
   return {
     kind: 'composing',
     composer: {
       capture,
       image,
+      markup,
       comment: '',
       intent: 'change',
       picker: null,

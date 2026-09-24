@@ -3,6 +3,7 @@ import { CircleCheck } from 'lucide-react-native'
 import { colors } from '../theme/mobile-theme'
 import { feedbackComposerStyles as styles } from './feedback-composer-styles'
 import { feedbackStatusLabel, type FeedbackItem, type FeedbackItemStatus } from './feedback-list'
+import { MobileFeedbackDetails } from './MobileFeedbackDetails'
 
 const CHIP: Record<FeedbackItemStatus, { background: string; text: string; label: string }> = {
   sending: { background: colors.bgRaised, text: colors.textSecondary, label: 'Sending' },
@@ -15,11 +16,14 @@ const CHIP: Record<FeedbackItemStatus, { background: string; text: string; label
 export function MobileFeedbackDelivered({
   item,
   items,
-  onDone
+  onDone,
+  initialDetailsOpen
 }: {
   item: FeedbackItem | null
   items: readonly FeedbackItem[]
   onDone: () => void
+  /** Demo route only. */
+  initialDetailsOpen?: boolean
 }) {
   return (
     <View>
@@ -29,12 +33,13 @@ export function MobileFeedbackDelivered({
           {item?.status === 'copied' ? 'Feedback copied' : 'Feedback delivered'}
         </Text>
         {item ? <Text style={styles.deliveredTarget}>{feedbackStatusLabel(item)}</Text> : null}
-        {item?.hostImagePath ? (
-          <Text style={styles.hostPath} numberOfLines={1}>
-            {item.hostImagePath}
-          </Text>
-        ) : null}
       </View>
+      {item?.hostImagePath ? (
+        <MobileFeedbackDetails
+          rows={[['Image on host', item.hostImagePath]]}
+          initiallyOpen={initialDetailsOpen}
+        />
+      ) : null}
       <Text style={styles.listTitle}>Feedback on this phone</Text>
       {items.map((entry) => {
         const chip = CHIP[entry.status]

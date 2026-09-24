@@ -61,6 +61,15 @@ export function feedbackHeaderRows(header: FeedbackHeader): [string, string][] {
  * on the page path, the auto header, the intent, then the comment. The screenshot line comes last
  * because the image path is pasted right after it as its own bracketed paste.
  */
+/** The composer's Details rows: the attached image first, then the header the agent gets. */
+export function feedbackComposerDetailRows(
+  image: FeedbackImageInfo,
+  header: FeedbackHeader
+): [string, string][] {
+  const size = `${image.width}x${image.height} px${image.markedUp ? ' · marked up' : ''}`
+  return [['Image', size], ...feedbackHeaderRows(header)]
+}
+
 export function formatFeedbackMarkdown(input: {
   header: FeedbackHeader
   intent: FeedbackIntent

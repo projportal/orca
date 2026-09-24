@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native'
 import { TEXT_INPUT_FONT_SIZE } from '../platform/text-input-font-size'
 import { colors, radii, spacing, typography } from '../theme/mobile-theme'
+import { FEEDBACK_MIN_TOUCH } from './feedback-touch-targets'
 
 export const feedbackComposerStyles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
@@ -16,13 +17,27 @@ export const feedbackComposerStyles = StyleSheet.create({
     backgroundColor: colors.bgRaised
   },
   summary: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
+  thumbnailButton: { width: 80, minHeight: FEEDBACK_MIN_TOUCH, justifyContent: 'center' },
   thumbnail: {
-    width: 64,
+    width: 80,
     borderRadius: radii.row,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
     backgroundColor: colors.bgRaised
   },
+  viewBadge: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: 'rgba(10,10,10,0.82)'
+  },
+  viewBadgeText: { color: colors.textPrimary, fontSize: 11, fontWeight: '700' },
   summaryColumn: { flex: 1, gap: spacing.sm, justifyContent: 'center' },
   segment: {
     flexDirection: 'row',
@@ -42,7 +57,6 @@ export const feedbackComposerStyles = StyleSheet.create({
   segmentItemActive: { backgroundColor: colors.textPrimary },
   segmentText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   segmentTextActive: { color: colors.bgBase },
-  imageMeta: { color: colors.textMuted, fontSize: typography.metaSize },
   input: {
     marginTop: spacing.md,
     minHeight: 96,
@@ -69,10 +83,16 @@ export const feedbackComposerStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderSubtle,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 6
+    paddingBottom: 2
   },
-  detailsTitle: { color: colors.textMuted, fontSize: 11, fontWeight: '600', marginBottom: 2 },
-  detailRow: { flexDirection: 'row', gap: spacing.sm, paddingVertical: 1 },
+  detailsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: FEEDBACK_MIN_TOUCH
+  },
+  detailsTitle: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  detailRow: { flexDirection: 'row', gap: spacing.sm, paddingVertical: 2 },
   detailName: { width: 96, color: colors.textMuted, fontSize: 11 },
   detailValue: { flex: 1, color: colors.textSecondary, fontSize: 11 },
   error: { color: colors.statusRed, fontSize: typography.metaSize, marginTop: spacing.sm },
@@ -102,12 +122,6 @@ export const feedbackComposerStyles = StyleSheet.create({
   deliveredHead: { alignItems: 'center', gap: 6, paddingVertical: spacing.sm },
   deliveredTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
   deliveredTarget: { color: colors.textSecondary, fontSize: 13 },
-  hostPath: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontFamily: typography.monoFamily,
-    textAlign: 'center'
-  },
   listTitle: {
     color: colors.textMuted,
     fontSize: 12,

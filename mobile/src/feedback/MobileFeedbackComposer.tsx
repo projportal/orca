@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
   Image,
@@ -9,20 +9,22 @@ import {
   TextInput,
   View
 } from 'react-native'
-import { CircleQuestionMark, Send, Wrench, X } from 'lucide-react-native'
+import { CircleQuestionMark, Eye, Send, Wrench, X } from 'lucide-react-native'
 import { ActionSheetContent } from '../components/ActionSheetModal'
 import { buildAgentTargetActions } from '../components/agent-target-actions'
 import { useKeyboardAvoidingPadding } from '../platform/keyboard-occlusion'
 import { colors } from '../theme/mobile-theme'
-import type { FeedbackComposer } from './feedback-flow'
+import { feedbackComposerImageUri, type FeedbackComposer } from './feedback-flow'
 import {
   FEEDBACK_COMMENT_MAX_CHARS,
-  feedbackHeaderRows,
+  feedbackComposerDetailRows,
   feedbackPageHeading,
   type FeedbackHeader,
   type FeedbackIntent
 } from './feedback-message'
 import { feedbackComposerStyles as styles } from './feedback-composer-styles'
+import { MobileFeedbackDetails } from './MobileFeedbackDetails'
+import { MobileFeedbackImageViewer } from './MobileFeedbackImageViewer'
 import type { MobileFeedbackFlow } from './use-mobile-feedback-flow'
 
 type Props = {
@@ -30,6 +32,9 @@ type Props = {
   flow: MobileFeedbackFlow
   header: FeedbackHeader
   onClose: () => void
+  /** Demo route only: open Details or the full-screen viewer on first paint. */
+  initialDetailsOpen?: boolean
+  initialViewerOpen?: boolean
 }
 
 const INTENTS: { intent: FeedbackIntent; label: string }[] = [
@@ -37,12 +42,31 @@ const INTENTS: { intent: FeedbackIntent; label: string }[] = [
   { intent: 'question', label: 'Question' }
 ]
 
+export const FEEDBACK_PICKER_CAPTION = 'Tap an agent to send now'
+
 /**
- * The feedback sheet: comment, intent, the auto header, and "Send to agent". The target picker is
- * the review-notes sheet's rows, shown in place so only one native sheet is ever up.
+ * The feedback sheet: the attachment, intent, comment, and "Send to agent"; the technical header
+ * sits under Details. The target picker is the review-notes sheet's rows, shown in place so only
+ * one native sheet is ever up.
  */
-export function MobileFeedbackComposer({ composer, flow, header, onClose }: Props) {
+export function MobileFeedbackComposer({
+  composer,
+  flow,
+  header,
+  onClose,
+  initialDetailsOpen,
+  initialViewerOpen
+}: Props) {
   const keyboardPadding = useKeyboardAvoidingPadding()
+  const [viewerOpen, setViewerOpen] = useState(false)
+  // Why: iOS will not present a second modal while the sheet's own is still presenting.
+  useEffect(() => {
+    if (!initialViewerOpen) {
+      return
+    }
+    const timer = setTimeout(() => setViewerOpen(true), 900)
+    return () => clearTimeout(timer)
+  }, [initialViewerOpen])
   const pickerActions = useMemo(
     () =>
       buildAgentTargetActions({
@@ -70,7 +94,7 @@ export function MobileFeedbackComposer({ composer, flow, header, onClose }: Prop
               ? 'Loading agent sessions...'
               : composer.picker.kind === 'error'
                 ? composer.picker.message
-                : 'Uploads the screenshot, pastes the feedback and presses Enter'
+                : FEEDBACK_PICKER_CAPTION
           }
           actions={pickerActions}
         />
@@ -87,6 +111,8 @@ export function MobileFeedbackComposer({ composer, flow, header, onClose }: Prop
 
   const count = composer.comment.length
   const { image } = composer
+  // Preview and upload read the same file: markup's flattened, cropped output.
+  const imageUri = feedbackComposerImageUri(composer)
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -102,6 +128,7 @@ export function MobileFeedbackComposer({ composer, flow, header, onClose }: Prop
         <Pressable
           style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
           onPress={onClose}
+          hitSlop={7}
           accessibilityRole="button"
           accessibilityLabel="Discard feedback"
         >
@@ -109,12 +136,22 @@ export function MobileFeedbackComposer({ composer, flow, header, onClose }: Prop
         </Pressable>
       </View>
       <View style={styles.summary}>
-        <Image
-          source={{ uri: image.uri }}
-          style={[styles.thumbnail, { aspectRatio: image.width / image.height }]}
-          resizeMode="cover"
-          accessibilityLabel="Screenshot to send"
-        />
+        <Pressable
+          style={({ pressed }) => [styles.thumbnailButton, pressed && styles.pressed]}
+          onPress={() => setViewerOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="View screenshot"
+        >
+          <Image
+            source={{ uri: imageUri }}
+            style={[styles.thumbnail, { aspectRatio: image.width / image.height }]}
+            resizeMode="cover"
+          />
+          <View style={styles.viewBadge} pointerEvents="none">
+            <Eye size={11} color={colors.textPrimary} strokeWidth={2.4} />
+            <Text style={styles.viewBadgeText}>View</Text>
+          </View>
+        </Pressable>
         <View style={styles.summaryColumn}>
           <View style={styles.segment} accessibilityRole="tablist">
             {INTENTS.map(({ intent, label }) => {
@@ -136,9 +173,6 @@ export function MobileFeedbackComposer({ composer, flow, header, onClose }: Prop
               )
             })}
           </View>
-          <Text style={styles.imageMeta}>
-            {`${image.width}x${image.height} px${image.markedUp ? ' · marked up' : ''}`}
-          </Text>
         </View>
       </View>
       <TextInput
@@ -156,17 +190,10 @@ export function MobileFeedbackComposer({ composer, flow, header, onClose }: Prop
       <Text style={[styles.counter, count >= FEEDBACK_COMMENT_MAX_CHARS && styles.counterFull]}>
         {`${count.toLocaleString('en-US')} / ${FEEDBACK_COMMENT_MAX_CHARS.toLocaleString('en-US')}`}
       </Text>
-      <View style={styles.details}>
-        <Text style={styles.detailsTitle}>Sent with the feedback</Text>
-        {feedbackHeaderRows(header).map(([name, value]) => (
-          <View key={name} style={styles.detailRow}>
-            <Text style={styles.detailName}>{name}</Text>
-            <Text style={styles.detailValue} numberOfLines={1}>
-              {value}
-            </Text>
-          </View>
-        ))}
-      </View>
+      <MobileFeedbackDetails
+        rows={feedbackComposerDetailRows(image, header)}
+        initiallyOpen={initialDetailsOpen}
+      />
       {composer.error ? <Text style={styles.error}>{composer.error}</Text> : null}
       <View style={styles.buttons}>
         <Pressable
@@ -196,6 +223,19 @@ export function MobileFeedbackComposer({ composer, flow, header, onClose }: Prop
           <Text style={styles.primaryText}>{composer.sending ? 'Sending…' : 'Send to agent'}</Text>
         </Pressable>
       </View>
+      <MobileFeedbackImageViewer
+        visible={viewerOpen}
+        image={image}
+        onClose={() => setViewerOpen(false)}
+        onEditMarkup={
+          composer.sending
+            ? undefined
+            : () => {
+                setViewerOpen(false)
+                flow.dispatch({ type: 'edit-markup' })
+              }
+        }
+      />
     </KeyboardAvoidingView>
   )
 }

@@ -12,6 +12,7 @@ import {
 } from '../session/mobile-review-terminal-operations'
 import type { MobileReviewTerminalTab } from '../session/review-terminal-reply-schema'
 import { interpretOrThrowRefusalMessage } from '../transport/rpc-refusal-message'
+import { feedbackComposerImageUri, type FeedbackComposer } from './feedback-flow'
 
 const BRACKETED_PASTE_START = '\x1b[200~'
 const BRACKETED_PASTE_END = '\x1b[201~'
@@ -39,6 +40,28 @@ export type FeedbackSendDeps = {
 
 export type FeedbackTerminalTarget = Pick<MobileReviewTerminalTab, 'terminal' | 'title'> & {
   agent?: string
+}
+
+/**
+ * The send's deps for one composer: the upload reads the composer's composed image (markup
+ * flattened and cropped), the same file the composer previews, never the raw capture.
+ */
+export function feedbackSendDepsFor(
+  composer: Pick<FeedbackComposer, 'image'>,
+  io: {
+    client: FeedbackRpcSender
+    readImageBase64: (uri: string) => Promise<string>
+    connectionId: string | null
+    sleep: (ms: number) => Promise<void>
+  }
+): FeedbackSendDeps {
+  const uri = feedbackComposerImageUri(composer)
+  return {
+    client: io.client,
+    readImageBase64: () => io.readImageBase64(uri),
+    connectionId: io.connectionId,
+    sleep: io.sleep
+  }
 }
 
 export function feedbackSubmitDelayMs(payload: string): number {

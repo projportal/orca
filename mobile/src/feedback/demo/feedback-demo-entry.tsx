@@ -10,15 +10,21 @@ import type {
   MobileFeedbackHostProps,
   MobileFeedbackKit
 } from '../mobile-feedback-kit'
-import { MOBILE_FEEDBACK_KIT, MobileFeedbackHost } from '../MobileFeedbackHost'
+import {
+  MOBILE_FEEDBACK_KIT,
+  MobileFeedbackHost,
+  type MobileFeedbackDemoView
+} from '../MobileFeedbackHost'
 import type { MobileFeedbackFlow } from '../use-mobile-feedback-flow'
 import {
+  FEEDBACK_DEMO_TERMINALS,
   createFeedbackDemoRpcClient,
   type DemoRpcLogEntry
 } from '../../../scripts/mock-feedback-demo-desktop'
 import {
   FEEDBACK_DEMO_COMMENT,
   feedbackDemoMarkupSeed,
+  feedbackDemoStepNeedsComposer,
   parseFeedbackDemoStep,
   type FeedbackDemoStep
 } from './feedback-demo-seeds'
@@ -55,8 +61,12 @@ color:#fff;padding:12px 18px;border-radius:10px;font-weight:600}</style></head><
 <span class="btn">Open preview</span></div><div class="card"><b>Onboarding</b>
 <p>Three-step checklist replaces the welcome modal.</p></div></body></html>`
 
-function stepNeedsComposer(step: FeedbackDemoStep): boolean {
-  return step === 'composer' || step === 'picker' || step === 'delivered'
+function demoViewFor(step: FeedbackDemoStep): MobileFeedbackDemoView {
+  return {
+    captureHint: step === 'hint',
+    detailsOpen: step === 'composer-details' || step === 'delivered',
+    viewerOpen: step === 'viewer'
+  }
 }
 
 const fastSleep = (ms: number) =>
@@ -73,12 +83,13 @@ function DemoHost(props: MobileFeedbackHostProps) {
     flowRef.current = flow
   }, [])
   const seed = useMemo(() => feedbackDemoMarkupSeed(step), [step])
+  const demoView = useMemo(() => demoViewFor(step), [step])
 
   useEffect(() => {
     const timer = setInterval(() => {
       ticks.current += 1
       const flow = flowRef.current
-      if (!flow || step === 'toolbar') {
+      if (!flow || step === 'toolbar' || step === 'hint') {
         return
       }
       const state = flow.state
@@ -110,7 +121,7 @@ function DemoHost(props: MobileFeedbackHostProps) {
         if (step === 'picker') {
           void flow.openPicker()
         } else if (step === 'delivered') {
-          flow.sendToTerminal({ terminal: 'term-demo-1', title: 'claude', agent: 'claude' })
+          flow.sendToTerminal(FEEDBACK_DEMO_TERMINALS[0])
         }
       }
     }, 300)
@@ -121,9 +132,10 @@ function DemoHost(props: MobileFeedbackHostProps) {
     <MobileFeedbackHost
       {...props}
       markupSeed={seed}
-      markupAutoFinishMs={stepNeedsComposer(step) ? 1500 : undefined}
+      markupAutoFinishMs={feedbackDemoStepNeedsComposer(step) ? 1500 : undefined}
       onFlow={onFlow}
       sleep={fastSleep}
+      demoView={demoView}
     />
   )
 }

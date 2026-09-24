@@ -7,26 +7,43 @@ import {
 
 export type FeedbackDemoStep =
   | 'toolbar'
+  | 'hint'
   | 'captured'
   | 'markup'
   | 'markup-label'
   | 'crop'
   | 'composer'
+  | 'composer-details'
+  | 'viewer'
   | 'picker'
   | 'delivered'
   | 'html'
 
 export const FEEDBACK_DEMO_STEPS: readonly FeedbackDemoStep[] = [
   'toolbar',
+  'hint',
   'captured',
   'markup',
   'markup-label',
   'crop',
   'composer',
+  'composer-details',
+  'viewer',
   'picker',
   'delivered',
   'html'
 ]
+
+/** Steps that press Done on the crop step's drawing and continue into the composer. */
+export function feedbackDemoStepNeedsComposer(step: FeedbackDemoStep): boolean {
+  return (
+    step === 'composer' ||
+    step === 'composer-details' ||
+    step === 'viewer' ||
+    step === 'picker' ||
+    step === 'delivered'
+  )
+}
 
 export function parseFeedbackDemoStep(value: unknown): FeedbackDemoStep {
   return FEEDBACK_DEMO_STEPS.find((step) => step === value) ?? 'toolbar'
@@ -57,14 +74,16 @@ export function feedbackDemoMarkupSeed(step: FeedbackDemoStep): MarkupState {
     { type: 'set-tool', tool: 'arrow' },
     ...drag({ x: 560, y: 1250 }, { x: 420, y: 1010 })
   ]
-  if (step === 'markup-label' || step === 'composer' || step === 'picker' || step === 'delivered') {
+  const cropped = step === 'crop' || feedbackDemoStepNeedsComposer(step)
+  if (step === 'markup-label' || cropped) {
     actions.push(
       { type: 'set-color', color: '#ffcc00' },
       { type: 'set-tool', tool: 'text' },
       { type: 'add-text', at: { x: 470, y: 1300 }, text: 'CTA hides "/ month"', fontSize: 48 }
     )
   }
-  if (step === 'crop') {
+  // The composer steps finish this same cropped drawing, so crop → Done → composer is one run.
+  if (cropped) {
     actions.push(
       { type: 'set-tool', tool: 'crop' },
       ...drag({ x: 48, y: 720 }, { x: 1158, y: 1580 })

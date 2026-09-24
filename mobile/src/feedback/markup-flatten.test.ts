@@ -9,7 +9,12 @@ import {
 } from './feedback-flow'
 import { feedbackSendDepsFor, type FeedbackRpcSender } from './feedback-send'
 import { flattenMarkup, scaleCrop, type MarkupFlattenDeps } from './markup-flatten'
-import { createMarkupState, markupReducer, type MarkupState } from './markup-model'
+import {
+  createMarkupState,
+  markupReducer,
+  type MarkupAction,
+  type MarkupState
+} from './markup-model'
 
 const CAPTURE: FeedbackCapture = {
   id: 'fb-1-aaaaaa',
@@ -50,27 +55,27 @@ function deps(snapshot = pngBase64(1206, 2148)) {
   return { value, written }
 }
 
+function drawn(actions: MarkupAction[], from: MarkupState = createMarkupState()): MarkupState {
+  return actions.reduce(markupReducer, from)
+}
+
 function withArrowAndCrop(crop: boolean): MarkupState {
-  let state = [
+  const state = drawn([
     { type: 'begin', point: { x: 100, y: 100 }, strokeWidth: 9 },
     { type: 'extend', point: { x: 600, y: 900 } },
     { type: 'end', minSize: 12 }
-  ].reduce(
-    (current, action) => markupReducer(current, action as Parameters<typeof markupReducer>[1]),
-    createMarkupState()
-  )
-  if (crop) {
-    state = [
-      { type: 'set-tool', tool: 'crop' },
-      { type: 'begin', point: { x: 50, y: 60 }, strokeWidth: 9 },
-      { type: 'extend', point: { x: 850, y: 1260 } },
-      { type: 'end', minSize: 12 }
-    ].reduce(
-      (current, action) => markupReducer(current, action as Parameters<typeof markupReducer>[1]),
-      state
-    )
-  }
-  return state
+  ])
+  return crop
+    ? drawn(
+        [
+          { type: 'set-tool', tool: 'crop' },
+          { type: 'begin', point: { x: 50, y: 60 }, strokeWidth: 9 },
+          { type: 'extend', point: { x: 850, y: 1260 } },
+          { type: 'end', minSize: 12 }
+        ],
+        state
+      )
+    : state
 }
 
 /** The deps under test only read the image; no request is ever made. */
@@ -178,15 +183,12 @@ describe('flatten', () => {
 
   it('crops the capture directly when only a crop was made', async () => {
     const { value } = deps()
-    const state = [
+    const state = drawn([
       { type: 'set-tool', tool: 'crop' },
       { type: 'begin', point: { x: 0, y: 0 }, strokeWidth: 3 },
       { type: 'extend', point: { x: 300, y: 300 } },
       { type: 'end', minSize: 12 }
-    ].reduce(
-      (current, action) => markupReducer(current, action as Parameters<typeof markupReducer>[1]),
-      createMarkupState()
-    )
+    ])
     await flattenMarkup(CAPTURE, state, value)
     expect(value.captureCanvas).not.toHaveBeenCalled()
     expect(value.crop).toHaveBeenCalledWith(CAPTURE.uri, 'fb-1-aaaaaa-crop.png', {

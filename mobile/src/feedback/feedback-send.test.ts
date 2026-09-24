@@ -44,6 +44,13 @@ function toClientResponse(response: RpcResponse): ClientRpcResponse {
       }
 }
 
+/** Request params as the handlers' record shape; anything but an object is no params. */
+function paramsRecord(params: unknown): Record<string, unknown> {
+  return typeof params === 'object' && params !== null
+    ? Object.fromEntries(Object.entries(params))
+    : {}
+}
+
 /** An RpcClient that answers from the repo's mock server handlers, recording every call. */
 function mockServerClient(): FeedbackRpcSender & {
   calls: { method: string; params: Record<string, unknown> }[]
@@ -53,7 +60,7 @@ function mockServerClient(): FeedbackRpcSender & {
   return {
     calls,
     sendRequest: async (method: string, params?: unknown) => {
-      const record = (params ?? {}) as Record<string, unknown>
+      const record = paramsRecord(params)
       calls.push({ method, params: record })
       let response: RpcResponse | undefined
       handleRequest(

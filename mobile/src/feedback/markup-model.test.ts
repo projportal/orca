@@ -121,7 +121,14 @@ describe('markup model', () => {
       { type: 'end', minSize: 12 }
     ])
     expect(state.shapes).toEqual([
-      { kind: 'arrow', color: '#0a84ff', width: 9, from: { x: 10, y: 10 }, to: { x: 110, y: 90 } }
+      {
+        id: 1,
+        kind: 'arrow',
+        color: '#0a84ff',
+        width: 9,
+        from: { x: 10, y: 10 },
+        to: { x: 110, y: 90 }
+      }
     ])
     expect(state.draft).toBeNull()
   })
@@ -135,7 +142,13 @@ describe('markup model', () => {
       { type: 'end', minSize: 12 }
     ])
     expect(state.shapes).toEqual([
-      { kind: 'rect', color: '#ff3b30', width: 3, rect: { x: 40, y: 20, width: 60, height: 80 } }
+      {
+        id: 1,
+        kind: 'rect',
+        color: '#ff3b30',
+        width: 3,
+        rect: { x: 40, y: 20, width: 60, height: 80 }
+      }
     ])
   })
 
@@ -170,7 +183,14 @@ describe('markup model', () => {
     ])
     expect(state.draft).toBeNull()
     expect(state.shapes).toEqual([
-      { kind: 'text', color: '#ff3b30', fontSize: 48, at: { x: 30, y: 40 }, text: 'too small' }
+      {
+        id: 1,
+        kind: 'text',
+        color: '#ff3b30',
+        fontSize: 48,
+        at: { x: 30, y: 40 },
+        text: 'too small'
+      }
     ])
   })
 
@@ -196,6 +216,19 @@ describe('markup model', () => {
     expect(canUndoMarkup(state)).toBe(false)
     expect(markupHasEdits(state)).toBe(false)
     expect(markupReducer(state, { type: 'undo' })).toBe(state)
+  })
+
+  it('never reuses a shape id after undo, so render keys stay stable', () => {
+    const arrow = (from: number): MarkupAction[] => [
+      { type: 'begin', point: { x: from, y: 0 }, strokeWidth: 3 },
+      { type: 'extend', point: { x: from + 100, y: 100 } },
+      { type: 'end', minSize: 12 }
+    ]
+    let state = run([...arrow(0), ...arrow(10)])
+    expect(state.shapes.map((shape) => shape.id)).toEqual([1, 2])
+    state = markupReducer(state, { type: 'undo' })
+    state = run(arrow(20), state)
+    expect(state.shapes.map((shape) => shape.id)).toEqual([1, 3])
   })
 
   it('makes resetting the crop undoable', () => {

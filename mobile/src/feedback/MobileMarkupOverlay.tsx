@@ -202,9 +202,8 @@ export function MobileMarkupOverlay({
                 height={fit.height}
                 viewBox={`0 0 ${image.width} ${image.height}`}
               >
-                {state.shapes.map((shape, index) => (
-                  // oxlint-disable-next-line react/no-array-index-key -- shapes are append-only; undo pops the last, so an index is stable.
-                  <MobileMarkupShape key={index} shape={shape} />
+                {state.shapes.map((shape) => (
+                  <MobileMarkupShape key={shape.id} shape={shape} />
                 ))}
                 {draft ? <MobileMarkupShape shape={draft} /> : null}
               </Svg>

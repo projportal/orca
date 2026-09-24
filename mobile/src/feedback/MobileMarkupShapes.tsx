@@ -5,12 +5,12 @@ import {
   estimateLabelWidth,
   polylinePathData
 } from './markup-geometry'
-import type { MarkupShape } from './markup-model'
+import type { MarkupDrawing } from './markup-model'
 
 const DARK_INKS = new Set(['#111111'])
 
 /** One markup shape in image-pixel coordinates; the parent Svg's viewBox maps it onto the frame. */
-export function MobileMarkupShape({ shape }: { shape: MarkupShape }) {
+export function MobileMarkupShape({ shape }: { shape: MarkupDrawing }) {
   switch (shape.kind) {
     case 'pen':
       return (

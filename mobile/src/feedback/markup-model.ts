@@ -9,12 +9,15 @@ export type MarkupTool = 'pen' | 'arrow' | 'rect' | 'text' | 'crop'
 
 export const MARKUP_COLORS = ['#ff3b30', '#ffcc00', '#34c759', '#0a84ff', '#ffffff', '#111111']
 
-/** Every shape is stored in image pixels, so drawing and flattening share one coordinate space. */
-export type MarkupShape =
+/** Every drawing is stored in image pixels, so drawing and flattening share one coordinate space. */
+export type MarkupDrawing =
   | { kind: 'pen'; color: string; width: number; points: MarkupPoint[] }
   | { kind: 'arrow'; color: string; width: number; from: MarkupPoint; to: MarkupPoint }
   | { kind: 'rect'; color: string; width: number; rect: MarkupRect }
   | { kind: 'text'; color: string; fontSize: number; at: MarkupPoint; text: string }
+
+/** A committed drawing; `id` is never reused (undo does not rewind it), so it is a stable key. */
+export type MarkupShape = MarkupDrawing & { id: number }
 
 type HistoryStep = { kind: 'shape' } | { kind: 'crop'; previous: MarkupRect | null }
 
@@ -22,6 +25,7 @@ export type MarkupState = {
   tool: MarkupTool
   color: string
   shapes: MarkupShape[]
+  nextShapeId: number
   crop: MarkupRect | null
   /** The drag in progress: a shape being drawn, or a crop being dragged out. */
   draft: MarkupDraft | null
@@ -35,7 +39,7 @@ export type MarkupDraft =
   | { kind: 'crop'; from: MarkupPoint; to: MarkupPoint }
 
 /** The shape a draft would commit now, for drawing it under the finger. Null for a crop drag. */
-export function draftShape(draft: MarkupDraft): MarkupShape | null {
+export function draftShape(draft: MarkupDraft): MarkupDrawing | null {
   switch (draft.kind) {
     case 'pen':
       return draft
@@ -79,6 +83,7 @@ export function createMarkupState(): MarkupState {
     tool: 'arrow',
     color: MARKUP_COLORS[0],
     shapes: [],
+    nextShapeId: 1,
     crop: null,
     draft: null,
     history: []
@@ -108,7 +113,7 @@ export function markupReducer(state: MarkupState, action: MarkupAction): MarkupS
       if (!text) {
         return state
       }
-      const shape: MarkupShape = {
+      const shape: MarkupDrawing = {
         kind: 'text',
         color: state.color,
         fontSize: action.fontSize,
@@ -197,10 +202,11 @@ function commitDraft(state: MarkupState, minSize: number): MarkupState {
   }
 }
 
-function pushShape(state: MarkupState, shape: MarkupShape): MarkupState {
+function pushShape(state: MarkupState, drawing: MarkupDrawing): MarkupState {
   return {
     ...state,
-    shapes: [...state.shapes, shape],
+    shapes: [...state.shapes, { ...drawing, id: state.nextShapeId }],
+    nextShapeId: state.nextShapeId + 1,
     history: [...state.history, { kind: 'shape' }]
   }
 }

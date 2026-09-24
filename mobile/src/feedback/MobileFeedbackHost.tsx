@@ -59,9 +59,7 @@ export function MobileFeedbackHost(props: HostProps) {
   const items = useMobileFeedbackList()
   const handledRequest = useRef(captureRequest)
   // The capture request the hint was shown at: the next camera tap moves past it and hides it.
-  const [hintAt, setHintAt] = useState<number | null>(
-    demoView?.captureHint ? captureRequest : null
-  )
+  const [hintAt, setHintAt] = useState<number | null>(demoView?.captureHint ? captureRequest : null)
   const hintShown = hintAt === captureRequest
   const dismissHint = useCallback(() => setHintAt(null), [])
 

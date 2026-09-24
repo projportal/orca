@@ -103,7 +103,7 @@ export function createFeedbackDemoRpcClient(log: (entry: DemoRpcLogEntry) => voi
   return {
     sendRequest: async (method, params) => {
       sequence += 1
-      const record = (params ?? {}) as Record<string, unknown>
+      const record = paramsRecord(params)
       log({ method, summary: summarize(method, record) })
       return answer(`demo-${sequence}`, method, record)
     },
@@ -124,6 +124,13 @@ export function createFeedbackDemoRpcClient(log: (entry: DemoRpcLogEntry) => voi
     notifyForeground: () => {},
     close: () => {}
   }
+}
+
+/** Request params as the handlers' record shape; anything but an object is no params. */
+function paramsRecord(params: unknown): Record<string, unknown> {
+  return typeof params === 'object' && params !== null
+    ? Object.fromEntries(Object.entries(params))
+    : {}
 }
 
 function ok(id: string, result: unknown): RpcResponse {

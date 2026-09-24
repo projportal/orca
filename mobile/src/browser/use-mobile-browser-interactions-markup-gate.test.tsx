@@ -17,14 +17,25 @@ type ResponderConfig = {
   onPanResponderRelease: (event: unknown, gesture: { dx: number; dy: number }) => void
 }
 
+// The last responder config the hook built; the mocked PanResponder records it here.
+const responder = vi.hoisted(() => {
+  const holder: { config: ResponderConfig | null } = { config: null }
+  return holder
+})
+
 vi.mock('react-native', () => ({
-  PanResponder: { create: (config: ResponderConfig) => ({ panHandlers: {}, config }) }
+  PanResponder: {
+    create: (config: ResponderConfig) => {
+      responder.config = config
+      return { panHandlers: {} }
+    }
+  }
 }))
 
-const sent = vi.hoisted(() => ({
-  clicks: [] as string[],
-  wheels: 0
-}))
+const sent = vi.hoisted(() => {
+  const record: { clicks: string[]; wheels: number } = { clicks: [], wheels: 0 }
+  return record
+})
 
 vi.mock('./use-mobile-browser-commands', () => ({
   useMobileBrowserCommands: () => ({
@@ -45,9 +56,9 @@ vi.mock('./use-mobile-browser-commands', () => ({
 const touch = (x: number, y: number) => ({ nativeEvent: { locationX: x, locationY: y } })
 
 function mountResponder(markupArmedRef: { current: boolean }): ResponderConfig {
-  const held: { config: ResponderConfig | null } = { config: null }
+  responder.config = null
   function Screen(): null {
-    const { panResponder } = useMobileBrowserInteractions({
+    useMobileBrowserInteractions({
       clearLongPressTimer: () => {},
       // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the commands hook is mocked, so the client is never called.
       client: {} as RpcClient,
@@ -73,16 +84,15 @@ function mountResponder(markupArmedRef: { current: boolean }): ResponderConfig {
       setZoom: () => {},
       zoomRef: { current: { scale: 1, offsetX: 0, offsetY: 0 } }
     })
-    held.config = (panResponder as unknown as { config: ResponderConfig }).config
     return null
   }
   act(() => {
     create(createElement(Screen))
   })
-  if (!held.config) {
+  if (!responder.config) {
     throw new Error('nothing mounted')
   }
-  return held.config
+  return responder.config
 }
 
 function tap(config: ResponderConfig): void {

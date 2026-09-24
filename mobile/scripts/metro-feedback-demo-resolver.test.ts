@@ -22,8 +22,22 @@ function resolverFor(flag: string | undefined): Resolve {
     process.env[FLAG] = flag
   }
   Reflect.deleteProperty(requireConfig.cache, requireConfig.resolve(CONFIG_PATH))
-  return (requireConfig(CONFIG_PATH) as { resolver: { resolveRequest: Resolve } }).resolver
-    .resolveRequest
+  return readResolveRequest(requireConfig(CONFIG_PATH))
+}
+
+/** The config's `resolver.resolveRequest`, checked at runtime since metro.config.js is untyped. */
+function readResolveRequest(config: unknown): Resolve {
+  const resolver: unknown =
+    typeof config === 'object' && config !== null && 'resolver' in config ? config.resolver : null
+  const resolve: unknown =
+    typeof resolver === 'object' && resolver !== null && 'resolveRequest' in resolver
+      ? resolver.resolveRequest
+      : null
+  if (typeof resolve !== 'function') {
+    throw new Error('metro.config.js has no resolver.resolveRequest')
+  }
+  return (context, moduleName, platform): unknown =>
+    Reflect.apply(resolve, undefined, [context, moduleName, platform])
 }
 
 const context = {

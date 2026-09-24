@@ -7,10 +7,20 @@ import {
   Square,
   Type,
   Undo2,
-  X,
   type LucideIcon
 } from 'lucide-react-native'
-import { colors, radii, spacing, typography } from '../theme/mobile-theme'
+import { colors, radii, spacing } from '../theme/mobile-theme'
+import {
+  MARKUP_CANCEL_FRAME,
+  MARKUP_ICON_FRAME,
+  MARKUP_PILL_FRAME,
+  MARKUP_ROW_GAP,
+  MARKUP_SWATCH_FRAME,
+  MARKUP_SWATCH_GAP,
+  MARKUP_TOOL_GAP,
+  touchHitSlop
+} from './feedback-touch-targets'
+import { markupToolHint } from './markup-tool-hint'
 import { MARKUP_COLORS, type MarkupTool } from './markup-model'
 
 const TOOLS: { tool: MarkupTool; label: string; icon: LucideIcon }[] = [
@@ -20,6 +30,11 @@ const TOOLS: { tool: MarkupTool; label: string; icon: LucideIcon }[] = [
   { tool: 'text', label: 'Text', icon: Type },
   { tool: 'crop', label: 'Crop', icon: Crop }
 ]
+
+const ICON_SLOP = touchHitSlop(MARKUP_ICON_FRAME)
+const SWATCH_SLOP = touchHitSlop(MARKUP_SWATCH_FRAME)
+const PILL_SLOP = touchHitSlop(MARKUP_PILL_FRAME)
+const CANCEL_SLOP = touchHitSlop(MARKUP_CANCEL_FRAME)
 
 type Props = {
   tool: MarkupTool
@@ -37,10 +52,49 @@ type Props = {
 
 export function MobileMarkupToolbar(props: Props) {
   const { tool, color, canUndo, hasCrop, busy } = props
+  const cropping = tool === 'crop'
   return (
     <View style={styles.bar}>
       <View style={styles.row}>
-        <IconButton label="Cancel markup" icon={X} onPress={props.onCancel} disabled={busy} />
+        <Pressable
+          style={({ pressed }) => [
+            styles.cancel,
+            pressed && styles.pressed,
+            busy && styles.disabled
+          ]}
+          onPress={props.onCancel}
+          disabled={busy}
+          hitSlop={CANCEL_SLOP}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel markup"
+        >
+          <Text style={styles.cancelText}>Cancel</Text>
+        </Pressable>
+        <View style={styles.actions}>
+          <IconButton
+            label="Undo"
+            icon={Undo2}
+            onPress={props.onUndo}
+            disabled={busy || !canUndo}
+          />
+          <Pressable
+            style={({ pressed }) => [styles.done, pressed && styles.pressed]}
+            onPress={props.onDone}
+            disabled={busy}
+            hitSlop={PILL_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel="Done"
+          >
+            {busy ? (
+              <ActivityIndicator size="small" color={colors.bgBase} />
+            ) : (
+              <Check size={16} color={colors.bgBase} strokeWidth={2.6} />
+            )}
+            <Text style={styles.doneText}>Done</Text>
+          </Pressable>
+        </View>
+      </View>
+      <View style={styles.row}>
         <View style={styles.tools}>
           {TOOLS.map((entry) => (
             <IconButton
@@ -53,65 +107,46 @@ export function MobileMarkupToolbar(props: Props) {
             />
           ))}
         </View>
-        <IconButton label="Undo" icon={Undo2} onPress={props.onUndo} disabled={busy || !canUndo} />
-        <Pressable
-          style={({ pressed }) => [styles.done, pressed && styles.pressed]}
-          onPress={props.onDone}
-          disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel="Done marking up"
-        >
-          {busy ? (
-            <ActivityIndicator size="small" color={colors.bgBase} />
+        <Text style={styles.hint} numberOfLines={1}>
+          {markupToolHint(tool, hasCrop)}
+        </Text>
+      </View>
+      {cropping && !hasCrop ? null : (
+        <View style={styles.row}>
+          {/* Colour does nothing to a crop, so the swatches step aside while cropping. */}
+          {cropping ? (
+            <View />
           ) : (
-            <Check size={16} color={colors.bgBase} strokeWidth={2.6} />
+            <View style={styles.swatches}>
+              {MARKUP_COLORS.map((swatch) => (
+                <Pressable
+                  key={swatch}
+                  onPress={() => props.onColor(swatch)}
+                  hitSlop={SWATCH_SLOP}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Colour ${swatch}`}
+                  accessibilityState={{ selected: swatch === color }}
+                  style={[styles.swatch, swatch === color && styles.swatchActive]}
+                >
+                  <View style={[styles.swatchFill, { backgroundColor: swatch }]} />
+                </Pressable>
+              ))}
+            </View>
           )}
-        </Pressable>
-      </View>
-      <View style={styles.row}>
-        <View style={styles.swatches}>
-          {MARKUP_COLORS.map((swatch) => (
+          {hasCrop ? (
             <Pressable
-              key={swatch}
-              onPress={() => props.onColor(swatch)}
+              onPress={props.onResetCrop}
+              hitSlop={PILL_SLOP}
               accessibilityRole="button"
-              accessibilityLabel={`Colour ${swatch}`}
-              accessibilityState={{ selected: swatch === color }}
-              style={[styles.swatch, swatch === color && styles.swatchActive]}
+              style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
             >
-              <View style={[styles.swatchFill, { backgroundColor: swatch }]} />
+              <Text style={styles.textButtonLabel}>Reset crop</Text>
             </Pressable>
-          ))}
+          ) : null}
         </View>
-        {hasCrop ? (
-          <Pressable
-            onPress={props.onResetCrop}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.textButton, pressed && styles.pressed]}
-          >
-            <Text style={styles.textButtonLabel}>Reset crop</Text>
-          </Pressable>
-        ) : (
-          <Text style={styles.hint}>{hintFor(tool)}</Text>
-        )}
-      </View>
+      )}
     </View>
   )
-}
-
-function hintFor(tool: MarkupTool): string {
-  switch (tool) {
-    case 'pen':
-      return 'Draw freehand'
-    case 'arrow':
-      return 'Drag to point'
-    case 'rect':
-      return 'Drag a box'
-    case 'text':
-      return 'Tap to label'
-    case 'crop':
-      return 'Drag the area to keep'
-  }
 }
 
 function IconButton(props: {
@@ -132,6 +167,7 @@ function IconButton(props: {
       ]}
       onPress={props.onPress}
       disabled={props.disabled}
+      hitSlop={ICON_SLOP}
       accessibilityRole="button"
       accessibilityLabel={props.label}
       accessibilityState={{ selected: props.active === true, disabled: props.disabled === true }}
@@ -143,18 +179,19 @@ function IconButton(props: {
 
 const styles = StyleSheet.create({
   bar: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    gap: MARKUP_ROW_GAP,
     backgroundColor: colors.bgPanel,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  tools: { flexDirection: 'row', gap: 2 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: MARKUP_TOOL_GAP },
+  tools: { flexDirection: 'row', gap: MARKUP_TOOL_GAP },
   icon: {
-    width: 34,
-    height: 32,
+    ...MARKUP_ICON_FRAME,
     borderRadius: radii.button,
     alignItems: 'center',
     justifyContent: 'center'
@@ -162,19 +199,32 @@ const styles = StyleSheet.create({
   iconActive: { backgroundColor: colors.textPrimary },
   pressed: { opacity: 0.7 },
   disabled: { opacity: 0.35 },
-  done: {
-    width: 40,
-    height: 32,
-    borderRadius: radii.button,
-    backgroundColor: colors.statusGreen,
+  cancel: {
+    minWidth: MARKUP_CANCEL_FRAME.width,
+    height: MARKUP_CANCEL_FRAME.height,
+    paddingHorizontal: spacing.md,
+    borderRadius: MARKUP_CANCEL_FRAME.height / 2,
+    backgroundColor: colors.bgRaised,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  swatches: { flexDirection: 'row', gap: spacing.sm, paddingLeft: spacing.xs },
+  cancelText: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  done: {
+    minWidth: MARKUP_PILL_FRAME.width,
+    height: MARKUP_PILL_FRAME.height,
+    paddingHorizontal: spacing.md,
+    borderRadius: MARKUP_PILL_FRAME.height / 2,
+    backgroundColor: colors.statusGreen,
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  doneText: { color: colors.bgBase, fontSize: 14, fontWeight: '700' },
+  swatches: { flexDirection: 'row', gap: MARKUP_SWATCH_GAP },
   swatch: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    ...MARKUP_SWATCH_FRAME,
+    borderRadius: MARKUP_SWATCH_FRAME.width / 2,
     borderWidth: 2,
     borderColor: 'transparent',
     alignItems: 'center',
@@ -188,7 +238,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)'
   },
-  hint: { color: colors.textMuted, fontSize: typography.metaSize, paddingRight: spacing.xs },
-  textButton: { paddingHorizontal: spacing.sm, paddingVertical: 4 },
-  textButtonLabel: { color: colors.accentBlue, fontSize: typography.metaSize, fontWeight: '600' }
+  hint: {
+    flex: 1,
+    marginLeft: spacing.md,
+    textAlign: 'right',
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500'
+  },
+  textButton: {
+    minWidth: MARKUP_PILL_FRAME.width,
+    height: MARKUP_PILL_FRAME.height,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  textButtonLabel: { color: colors.accentBlue, fontSize: 14, fontWeight: '600' }
 })
